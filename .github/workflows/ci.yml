@@ -163,19 +163,20 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
 
-      - name: "[Setup] JFrog CLI with Shared OIDC Token"
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_URL: ${{ vars.JFROG_URL }}
-          JF_PROJECT: ${{ vars.PROJECT_KEY }}
-          JF_ACCESS_TOKEN: ${{ needs.authenticate.outputs.token-method == 'manual' && env.JF_OIDC_TOKEN || '' }}
-          JFROG_CLI_BUILD_NAME: ${{ env.BUILD_NAME }}
-          JFROG_CLI_BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
-        with:
-          version: latest
-          disable-job-summary: false
-          disable-auto-build-publish: true
-          disable-auto-evidence-collection: false
+      - name: "[Setup] Configure JFrog CLI Build Info"
+        run: |
+          echo "🔧 Configuring JFrog CLI for build info collection"
+          echo "✅ JFrog CLI already configured by shared OIDC authentication"
+          echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
+          
+          # Configure build info environment
+          export JF_PROJECT="${{ vars.PROJECT_KEY }}"
+          export JFROG_CLI_BUILD_NAME="$BUILD_NAME"
+          export JFROG_CLI_BUILD_NUMBER="$BUILD_NUMBER"
+          export JFROG_CLI_BUILD_PROJECT="${{ vars.PROJECT_KEY }}"
+          
+          # Verify JFrog connectivity
+          jf rt ping
 
       - name: "[Setup] Python"
         uses: actions/setup-python@v5
@@ -317,19 +318,20 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
 
-      - name: "[Setup] JFrog CLI with Shared OIDC Token"
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_URL: ${{ vars.JFROG_URL }}
-          JF_PROJECT: ${{ vars.PROJECT_KEY }}
-          JF_ACCESS_TOKEN: ${{ needs.authenticate.outputs.token-method == 'manual' && env.JF_OIDC_TOKEN || '' }}
-          JFROG_CLI_BUILD_NAME: ${{ env.BUILD_NAME }}
-          JFROG_CLI_BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
-        with:
-          version: latest
-          disable-job-summary: false
-          disable-auto-build-publish: true
-          disable-auto-evidence-collection: false
+      - name: "[Setup] Configure JFrog CLI Build Info"
+        run: |
+          echo "🔧 Configuring JFrog CLI for build info collection"
+          echo "✅ JFrog CLI already configured by shared OIDC authentication"
+          echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
+          
+          # Configure build info environment
+          export JF_PROJECT="${{ vars.PROJECT_KEY }}"
+          export JFROG_CLI_BUILD_NAME="$BUILD_NAME"
+          export JFROG_CLI_BUILD_NUMBER="$BUILD_NUMBER"
+          export JFROG_CLI_BUILD_PROJECT="${{ vars.PROJECT_KEY }}"
+          
+          # Verify JFrog connectivity
+          jf rt ping
 
       - name: "[Setup] Python"
         uses: actions/setup-python@v5
