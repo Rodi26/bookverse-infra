@@ -121,13 +121,13 @@ generate_random_values() {
   export BUNDLE_TYPE="configuration"
   
   # Random deployment metrics
+  # Timestamps
+  export NOW_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  
   export REPLICAS_DESIRED=$((2 + RANDOM % 4))
   export REPLICAS_READY=$REPLICAS_DESIRED
   export REVISION="${GITHUB_SHA:0:8}"
   export DEPLOYED_AT="${NOW_TS}"
-  
-  # Timestamps
-  export NOW_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   export APPROVED_AT="${NOW_TS}"
 }
 
