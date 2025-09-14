@@ -110,9 +110,22 @@ jobs:
             echo "📝 Production note: Real systems would be more conservative here"
           fi
 
+  authenticate:
+    name: "Shared OIDC Authentication"
+    needs: analyze-commit
+    if: needs.analyze-commit.outputs.core_changed == 'true' || needs.analyze-commit.outputs.devops_changed == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/shared-oidc-auth.yml
+    with:
+      service-name: "infra"
+      jfrog-url: ${{ vars.JFROG_URL }}
+      oidc-provider-name: "bookverse-infra-github"
+      oidc-audience: ${{ vars.JFROG_URL }}
+      token-variable-name: "JF_OIDC_TOKEN"
+      fallback-to-action: true
+
   build-bookverse-core:
     name: "Build: bookverse-core"
-    needs: analyze-commit
+    needs: [analyze-commit, authenticate]
     if: needs.analyze-commit.outputs.core_changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
@@ -150,20 +163,19 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
 
-      - name: "[Setup] JFrog CLI"
+      - name: "[Setup] JFrog CLI with Shared OIDC Token"
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ vars.JFROG_URL }}
           JF_PROJECT: ${{ vars.PROJECT_KEY }}
+          JF_ACCESS_TOKEN: ${{ needs.authenticate.outputs.token-method == 'manual' && env.JF_OIDC_TOKEN || '' }}
           JFROG_CLI_BUILD_NAME: ${{ env.BUILD_NAME }}
           JFROG_CLI_BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
         with:
           version: latest
-          oidc-provider-name: bookverse-infra-github
           disable-job-summary: false
           disable-auto-build-publish: true
           disable-auto-evidence-collection: false
-          oidc-audience: ${{ vars.JFROG_URL }}
 
       - name: "[Setup] Python"
         uses: actions/setup-python@v5
@@ -268,7 +280,7 @@ jobs:
 
   build-bookverse-devops:
     name: "Build: bookverse-devops"
-    needs: analyze-commit
+    needs: [analyze-commit, authenticate]
     if: needs.analyze-commit.outputs.devops_changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
@@ -305,20 +317,19 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
 
-      - name: "[Setup] JFrog CLI"
+      - name: "[Setup] JFrog CLI with Shared OIDC Token"
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ vars.JFROG_URL }}
           JF_PROJECT: ${{ vars.PROJECT_KEY }}
+          JF_ACCESS_TOKEN: ${{ needs.authenticate.outputs.token-method == 'manual' && env.JF_OIDC_TOKEN || '' }}
           JFROG_CLI_BUILD_NAME: ${{ env.BUILD_NAME }}
           JFROG_CLI_BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
         with:
           version: latest
-          oidc-provider-name: bookverse-infra-github
           disable-job-summary: false
           disable-auto-build-publish: true
           disable-auto-evidence-collection: false
-          oidc-audience: ${{ vars.JFROG_URL }}
 
       - name: "[Setup] Python"
         uses: actions/setup-python@v5
@@ -433,7 +444,7 @@ jobs:
 
   create-application-version:
     name: "AppTrust: Create Application Version"
-    needs: [analyze-commit, build-bookverse-core, build-bookverse-devops]
+    needs: [analyze-commit, authenticate, build-bookverse-core, build-bookverse-devops]
     if: always() && needs.analyze-commit.outputs.create_app_version == 'true' && (needs.build-bookverse-core.result == 'success' || needs.build-bookverse-core.result == 'skipped') && (needs.build-bookverse-devops.result == 'success' || needs.build-bookverse-devops.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
