@@ -1,0 +1,54 @@
+# BookVerse Infrastructure Version Configuration
+# Defines versioning strategy for infrastructure libraries
+
+applications:
+  - key: "bookverse-infra"
+    name: "BookVerse Infrastructure"
+    description: "Consolidated infrastructure libraries and DevOps tooling"
+    type: "infrastructure"
+    seeds:
+      application: "1.0.0"
+    libraries:
+      - name: "bookverse-core"
+        type: "python-library"
+        description: "Python commons library for BookVerse services"
+        seeds:
+          package: "0.1.0"
+        components:
+          - "authentication"
+          - "configuration"
+          - "api-utilities"
+          - "database-helpers"
+      - name: "bookverse-devops"
+        type: "devops-tooling"
+        description: "CI/CD workflows, scripts, and evidence templates"
+        seeds:
+          package: "1.0.0"
+        components:
+          - "github-workflows"
+          - "semver-scripts"
+          - "evidence-templates"
+          - "shared-tooling"
+
+versioning:
+  strategy: "semantic"
+  auto_increment: true
+  release_branches:
+    - "main"
+  
+stages:
+  - name: "DEV"
+    auto_promote: true
+  - name: "bookverse-QA"
+    auto_promote: false
+    approval_required: false  # Demo mode
+  - name: "PROD"
+    auto_promote: false
+    approval_required: false  # Demo mode
+
+promotion:
+  criteria:
+    - "all_tests_passed"
+    - "coverage_threshold_met"
+    - "security_scan_passed"
+    - "evidence_collected"
