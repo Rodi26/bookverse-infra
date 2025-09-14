@@ -1,17 +1,19 @@
 # BookVerse Infrastructure
 
-Central repository for shared libraries and DevOps tooling for the BookVerse platform.
+**Single consolidated infrastructure application** containing multiple packages for shared libraries and DevOps tooling across the BookVerse platform.
 
-## 📚 Libraries
+## 📦 Packages
 
-### `bookverse-core`
+This single infrastructure application publishes multiple packages:
+
+### `bookverse-core` (Python Package)
 Python commons library providing shared utilities for BookVerse services:
 - **Authentication**: JWT/OIDC authentication with `AuthUser` and validation
 - **Configuration**: Advanced YAML loading with deep merging and environment variables
 - **API Utilities**: Standardized HTTP exceptions, pagination, and response helpers
 - **Database**: SQLAlchemy session management and pagination utilities
 
-### `bookverse-devops`
+### `bookverse-devops` (DevOps Package)
 CI/CD workflows, scripts, and tooling for BookVerse services:
 - **Reusable Workflows**: Standardized GitHub Actions workflows
 - **Scripts**: Semantic versioning, evidence generation, and deployment utilities
@@ -90,11 +92,11 @@ pytest libraries/bookverse-devops/tests
 
 ## 📋 Migration Status
 
-- ✅ **bookverse-recommendations**: Migrated to bookverse-core
-- ✅ **bookverse-inventory**: Migrated to bookverse-core  
-- ✅ **bookverse-checkout**: Migrated to bookverse-core
-- ✅ **bookverse-platform**: Migrated to bookverse-core
-- ⏳ **All services**: Migrating to published packages (in progress)
+- ✅ **bookverse-recommendations**: Migrated to bookverse-core package
+- ✅ **bookverse-inventory**: Migrated to bookverse-core package  
+- ✅ **bookverse-checkout**: Migrated to bookverse-core package
+- ✅ **bookverse-platform**: Migrated to bookverse-core package
+- ⏳ **All services**: Migrating to published packages from bookverse-infra (in progress)
 
 ## 🏆 Benefits
 
