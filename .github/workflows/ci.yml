@@ -488,6 +488,7 @@ jobs:
         with:
           version: latest
           oidc-provider-name: bookverse-infra-github
+          oidc-audience: ${{ vars.JFROG_URL }}
 
       - name: "[AppTrust] Create Application Version"
         id: create-version
