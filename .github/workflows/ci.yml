@@ -264,9 +264,9 @@ jobs:
           jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-pypi-cache-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           jf rt upload "dist/*.tar.gz" "${{ vars.PROJECT_KEY }}-pypi-cache-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           
-          # Upload coverage report
-          jf rt upload "coverage.xml" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-core/coverage/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          jf rt upload "htmlcov/" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-core/coverage/$BUILD_NUMBER/html/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          # Upload coverage report (using platform repository since infra repos don't exist yet)
+          jf rt upload "coverage.xml" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-core/coverage/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "htmlcov/" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-core/coverage/$BUILD_NUMBER/html/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           
           echo "✅ Uploaded bookverse-core artifacts to JFrog"
 
