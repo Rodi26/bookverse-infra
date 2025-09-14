@@ -289,7 +289,7 @@ jobs:
           }
           EOF
           
-          jf rt upload "evidence/pytest-results.json" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-core/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "evidence/pytest-results.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-core/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           echo "✅ Collected test evidence for bookverse-core"
 
   build-bookverse-devops:
@@ -437,12 +437,12 @@ jobs:
           set -euo pipefail
           
           # Upload packaged artifacts
-          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           
           # Upload individual components for easy access
-          jf rt upload "scripts/" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-devops/scripts/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          jf rt upload "evidence/" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-devops/evidence/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "scripts/" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/scripts/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "evidence/" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/evidence/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           
           echo "✅ Uploaded bookverse-devops artifacts to JFrog"
 
@@ -464,7 +464,7 @@ jobs:
           }
           EOF
           
-          jf rt upload "evidence-output/validation-results.json" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-devops/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "evidence-output/validation-results.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           echo "✅ Collected validation evidence for bookverse-devops"
 
   create-application-version:
