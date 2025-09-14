@@ -159,7 +159,7 @@ jobs:
           JFROG_CLI_BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
         with:
           version: latest
-          oidc-provider-name: bookverse-inventory-github
+          oidc-provider-name: bookverse-infra-github
           disable-job-summary: false
           disable-auto-build-publish: true
           disable-auto-evidence-collection: false
@@ -314,7 +314,7 @@ jobs:
           JFROG_CLI_BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
         with:
           version: latest
-          oidc-provider-name: bookverse-inventory-github
+          oidc-provider-name: bookverse-infra-github
           disable-job-summary: false
           disable-auto-build-publish: true
           disable-auto-evidence-collection: false
@@ -453,7 +453,7 @@ jobs:
           JF_PROJECT: ${{ vars.PROJECT_KEY }}
         with:
           version: latest
-          oidc-provider-name: bookverse-inventory-github
+          oidc-provider-name: bookverse-infra-github
 
       - name: "[AppTrust] Create Application Version"
         id: create-version
