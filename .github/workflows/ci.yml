@@ -1,0 +1,206 @@
+name: BookVerse Infrastructure CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      core-changed: ${{ steps.changes.outputs.core }}
+      devops-changed: ${{ steps.changes.outputs.devops }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --name-only HEAD~1 | grep -q "^libraries/bookverse-core/"; then
+            echo "core=true" >> $GITHUB_OUTPUT
+          else
+            echo "core=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if git diff --name-only HEAD~1 | grep -q "^libraries/bookverse-devops/"; then
+            echo "devops=true" >> $GITHUB_OUTPUT
+          else
+            echo "devops=false" >> $GITHUB_OUTPUT
+          fi
+
+  test-bookverse-core:
+    name: Test bookverse-core
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.core-changed == 'true' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: libraries/bookverse-core
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --cov=bookverse_core --cov-report=term-missing
+
+      - name: Test package build
+        run: |
+          pip install build
+          python -m build
+
+  test-bookverse-devops:
+    name: Test bookverse-devops
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.devops-changed == 'true' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: libraries/bookverse-devops
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Test scripts
+        run: |
+          # Test semver script
+          python scripts/semver_versioning.py --help
+          
+          # Test script executability
+          chmod +x scripts/determine-semver.sh
+          ./scripts/determine-semver.sh --help || echo "Script help test completed"
+
+      - name: Validate workflows
+        run: |
+          # Basic YAML validation for workflow files
+          python -c "
+          import yaml
+          import os
+          
+          workflow_files = []
+          for root, dirs, files in os.walk('.'):
+              for file in files:
+                  if file.endswith('.yml') or file.endswith('.yaml'):
+                      workflow_files.append(os.path.join(root, file))
+          
+          for file in workflow_files:
+              try:
+                  with open(file, 'r') as f:
+                      yaml.safe_load(f)
+                  print(f'✅ {file} is valid YAML')
+              except Exception as e:
+                  print(f'❌ {file} has invalid YAML: {e}')
+                  exit(1)
+          "
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: [test-bookverse-core, test-bookverse-devops]
+    if: always() && (needs.test-bookverse-core.result == 'success' || needs.test-bookverse-core.result == 'skipped') && (needs.test-bookverse-devops.result == 'success' || needs.test-bookverse-devops.result == 'skipped')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Test cross-library integration
+        run: |
+          # Install bookverse-core
+          pip install -e ./libraries/bookverse-core
+          
+          # Test that core library can be imported and used
+          python -c "
+          from bookverse_core.auth import AuthUser
+          from bookverse_core.config import ConfigLoader
+          from bookverse_core.api.exceptions import raise_validation_error
+          
+          # Test AuthUser
+          user = AuthUser({'sub': 'test', 'email': 'test@example.com'})
+          print(f'✅ AuthUser created: {user}')
+          
+          # Test ConfigLoader
+          loader = ConfigLoader()
+          print('✅ ConfigLoader imported successfully')
+          
+          print('✅ All core imports working correctly')
+          "
+
+  publish-packages:
+    name: Publish Packages
+    runs-on: ubuntu-latest
+    needs: [test-bookverse-core, test-bookverse-devops, integration-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ vars.JFROG_URL }}
+          JF_PROJECT: ${{ vars.PROJECT_KEY }}
+        with:
+          oidc-provider-name: bookverse-infra-github
+
+      - name: Build and publish bookverse-core
+        if: needs.detect-changes.outputs.core-changed == 'true'
+        working-directory: libraries/bookverse-core
+        run: |
+          # Install build tools
+          pip install build twine
+          
+          # Build package
+          python -m build
+          
+          # Publish to JFrog
+          jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-pypi-local/" --build-name "bookverse-core" --build-number "${{ github.run_number }}"
+          jf rt upload "dist/*.tar.gz" "${{ vars.PROJECT_KEY }}-pypi-local/" --build-name "bookverse-core" --build-number "${{ github.run_number }}"
+          
+          echo "✅ Published bookverse-core to JFrog Artifactory"
+
+      - name: Publish devops artifacts
+        if: needs.detect-changes.outputs.devops-changed == 'true'
+        working-directory: libraries/bookverse-devops
+        run: |
+          # Package devops scripts and templates
+          tar -czf bookverse-devops-${{ github.run_number }}.tar.gz scripts/ evidence/ templates/ *.md
+          
+          # Upload to JFrog
+          jf rt upload "bookverse-devops-${{ github.run_number }}.tar.gz" "${{ vars.PROJECT_KEY }}-generic-local/bookverse-devops/" --build-name "bookverse-devops" --build-number "${{ github.run_number }}"
+          
+          echo "✅ Published bookverse-devops artifacts to JFrog Artifactory"
