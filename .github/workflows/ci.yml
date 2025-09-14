@@ -274,7 +274,7 @@ jobs:
 
       - name: "[Evidence] Collect test results"
         run: |
-          # Create evidence for test execution
+          # Create evidence for test execution (temporarily disabled - repository not available)
           mkdir -p evidence
           
           cat > evidence/pytest-results.json << EOF
@@ -289,8 +289,10 @@ jobs:
           }
           EOF
           
-          jf rt upload "evidence/pytest-results.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-core/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          echo "✅ Collected test evidence for bookverse-core"
+          # TODO: Enable once bookverse-infra repositories are created in setup
+          echo "ℹ️  Evidence upload temporarily disabled - repository not available"
+          # jf rt upload "evidence/pytest-results.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-core/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          echo "✅ Collected test evidence for bookverse-core (locally)"
 
   build-bookverse-devops:
     name: "Build: bookverse-devops"
@@ -436,15 +438,18 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Upload packaged artifacts
-          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          # Upload packaged artifacts (temporarily disabled - repository not available)
+          echo "ℹ️  DevOps artifact upload temporarily disabled - repository not available"
+          echo "📦 Artifacts created locally:"
+          ls -la bookverse-devops-${PACKAGE_VERSION}.tar.gz version-manifest.json
           
-          # Upload individual components for easy access
-          jf rt upload "scripts/" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/scripts/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          jf rt upload "evidence/" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/evidence/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          # TODO: Enable once bookverse-infra repositories are created in setup
+          # jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          # jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          # jf rt upload "scripts/" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/scripts/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          # jf rt upload "evidence/" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/evidence/$PACKAGE_VERSION/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           
-          echo "✅ Uploaded bookverse-devops artifacts to JFrog"
+          echo "✅ DevOps artifacts prepared (upload disabled)"
 
       - name: "[Evidence] Collect validation results"
         run: |
@@ -464,8 +469,10 @@ jobs:
           }
           EOF
           
-          jf rt upload "evidence-output/validation-results.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          echo "✅ Collected validation evidence for bookverse-devops"
+          # TODO: Enable once bookverse-infra repositories are created in setup
+          echo "ℹ️  Evidence upload temporarily disabled - repository not available"
+          # jf rt upload "evidence-output/validation-results.json" "${{ vars.PROJECT_KEY }}-platform-internal-generic-nonprod-local/bookverse-devops/evidence/$BUILD_NUMBER/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          echo "✅ Collected validation evidence for bookverse-devops (locally)"
 
   create-application-version:
     name: "AppTrust: Create Application Version"
