@@ -120,8 +120,6 @@ jobs:
       jfrog-url: ${{ vars.JFROG_URL }}
       oidc-provider-name: "bookverse-infra-github"
       oidc-audience: ${{ vars.JFROG_URL }}
-      token-variable-name: "JF_OIDC_TOKEN"
-      fallback-to-action: true
 
   build-bookverse-core:
     name: "Build: bookverse-core"
