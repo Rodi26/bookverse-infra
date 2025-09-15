@@ -1,22 +1,55 @@
 {
-  "tool": "Invicti DAST",
-  "status": "PASSED",
-  "applicationKey": "${APPLICATION_KEY}",
-  "version": "${APP_VERSION}",
-  "environment": "QA",
-  "scanId": "${SCAN_ID}",
-  "generatedAt": "${NOW_TS}",
-  "findings": {
-    "critical": 0,
-    "high": 0,
-    "medium": ${MEDIUM_FINDINGS},
-    "low": ${LOW_FINDINGS}
+  "scanner": "invicti",
+  "scan_id": "${SCAN_ID}",
+  "target_application": "${APPLICATION_KEY}",
+  "target_version": "${APP_VERSION}",
+  "scan_type": "dast",
+  "environment": "qa",
+  "scan_initiated": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)",
+  "scan_completed": "$(date -u -d '+${TEST_DURATION} seconds' +%Y-%m-%dT%H:%M:%S.%3NZ)",
+  "scan_duration": "${TEST_DURATION}",
+  "target_url": "https://qa.bookverse.com/${SERVICE_NAME}",
+  "scan_profile": "comprehensive",
+  "vulnerability_summary": {
+    "total_vulnerabilities": ${TOTAL_VULNERABILITIES},
+    "high_severity": ${HIGH_FINDINGS},
+    "medium_severity": ${MEDIUM_FINDINGS},
+    "low_severity": ${LOW_FINDINGS},
+    "informational": 0
   },
-  "scanDetails": {
-    "duration": "${SCAN_DURATION}s",
-    "urlsScanned": ${URLS_SCANNED},
-    "vulnerabilitiesFound": ${TOTAL_VULNERABILITIES}
+  "compliance_status": "passed",
+  "scan_configuration": {
+    "authentication": "enabled",
+    "crawling_depth": 5,
+    "scan_policy": "OWASP_Top_10",
+    "excluded_paths": ["/health", "/metrics"],
+    "included_technologies": ["python", "fastapi", "docker"]
   },
-  "attachStage": "QA",
-  "gateForPromotionTo": "STAGING"
+  "findings": [
+    {
+      "id": "VUL-${RANDOM}",
+      "severity": "medium",
+      "type": "Cross-Site Scripting (XSS)",
+      "location": "/api/v1/${SERVICE_NAME}/search",
+      "status": "verified",
+      "remediation": "Input validation and output encoding implemented"
+    },
+    {
+      "id": "VUL-${RANDOM}",
+      "severity": "low", 
+      "type": "Information Disclosure",
+      "location": "/api/v1/${SERVICE_NAME}/debug",
+      "status": "false_positive",
+      "remediation": "Debug endpoint disabled in production"
+    }
+  ],
+  "scan_metadata": {
+    "scanner_version": "2024.9.1",
+    "scan_engine": "invicti-standard",
+    "project_key": "${PROJECT_KEY}",
+    "build_number": "${BUILD_NUMBER}",
+    "commit_sha": "${GITHUB_SHA}",
+    "branch": "${GITHUB_REF_NAME}",
+    "repository": "${GITHUB_REPOSITORY}"
+  }
 }

@@ -1,17 +1,95 @@
 {
-  "tool": "Atlassian Jira",
-  "status": "APPROVED",
-  "applicationKey": "${APPLICATION_KEY}",
+  "release_id": "${RELEASE_ID}",
+  "application": "${APPLICATION_KEY}",
   "version": "${APP_VERSION}",
-  "releaseId": "${RELEASE_ID}",
-  "generatedAt": "${NOW_TS}",
-  "release": {
-    "name": "${APPLICATION_KEY} v${APP_VERSION}",
-    "description": "Automated release for ${APPLICATION_KEY} version ${APP_VERSION}",
-    "ticketCount": ${TICKET_COUNT},
-    "resolvedIssues": ${RESOLVED_ISSUES},
-    "approvedBy": "${APPROVED_BY}"
+  "release_type": "feature_release",
+  "status": "released",
+  "release_manager": "product-team@bookverse.com",
+  "created_date": "$(date -u -d '-7 days' +%Y-%m-%dT%H:%M:%S.%3NZ)",
+  "release_date": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)",
+  "project_key": "BOOK",
+  "release_notes": {
+    "summary": "Enhanced ${SERVICE_NAME} service with improved functionality and performance optimizations",
+    "features": [
+      "Enhanced ${SERVICE_NAME} core functionality",
+      "Improved API response times",
+      "Enhanced user experience",
+      "Scalability improvements"
+    ],
+    "bug_fixes": [
+      "Fixed ${SERVICE_NAME} cache invalidation",
+      "Resolved service memory leaks",
+      "Corrected API response formatting"
+    ],
+    "breaking_changes": [],
+    "known_issues": []
   },
-  "attachStage": "UNASSIGNED",
-  "gateForPromotionTo": "DEV"
+  "associated_tickets": [
+    {
+      "ticket_id": "BOOK-${RANDOM}",
+      "type": "Story",
+      "title": "Implement ${SERVICE_NAME} enhancements",
+      "status": "Done",
+      "assignee": "developer@bookverse.com",
+      "story_points": 8
+    },
+    {
+      "ticket_id": "BOOK-${RANDOM}",
+      "type": "Task", 
+      "title": "Optimize ${SERVICE_NAME} performance",
+      "status": "Done",
+      "assignee": "backend-engineer@bookverse.com",
+      "story_points": 5
+    },
+    {
+      "ticket_id": "BOOK-${RANDOM}",
+      "type": "Bug",
+      "title": "Fix ${SERVICE_NAME} service issues",
+      "status": "Done",
+      "assignee": "devops-engineer@bookverse.com",
+      "story_points": 3
+    }
+  ],
+  "quality_gates": {
+    "code_review": "passed",
+    "unit_tests": "passed",
+    "integration_tests": "passed",
+    "security_scan": "passed",
+    "performance_tests": "passed",
+    "manual_testing": "passed"
+  },
+  "deployment_readiness": {
+    "documentation_updated": true,
+    "deployment_scripts_ready": true,
+    "rollback_plan_available": true,
+    "monitoring_alerts_configured": true,
+    "team_training_completed": true
+  },
+  "stakeholder_approval": {
+    "product_owner": {
+      "approved_by": "product-owner@bookverse.com",
+      "approval_date": "$(date -u -d '-1 day' +%Y-%m-%dT%H:%M:%S.%3NZ)",
+      "status": "approved"
+    },
+    "engineering_manager": {
+      "approved_by": "eng-manager@bookverse.com", 
+      "approval_date": "$(date -u -d '-1 day' +%Y-%m-%dT%H:%M:%S.%3NZ)",
+      "status": "approved"
+    },
+    "architecture_review": {
+      "approved_by": "architect@bookverse.com",
+      "approval_date": "$(date -u -d '-2 days' +%Y-%m-%dT%H:%M:%S.%3NZ)",
+      "status": "approved"
+    }
+  },
+  "release_metadata": {
+    "project_key": "${PROJECT_KEY}",
+    "build_number": "${BUILD_NUMBER}",
+    "commit_sha": "${GITHUB_SHA}",
+    "branch": "${GITHUB_REF_NAME}",
+    "repository": "${GITHUB_REPOSITORY}",
+    "jira_project": "BOOK",
+    "release_version": "${APP_VERSION}",
+    "epic_links": ["BOOK-Epic-${SERVICE_NAME}"]
+  }
 }
