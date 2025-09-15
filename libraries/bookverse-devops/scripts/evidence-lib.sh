@@ -5,7 +5,8 @@
 set -euo pipefail
 
 # Get the directory of this script to find templates
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Use relative path to work correctly in GitHub Actions checkout environment
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 EVIDENCE_TEMPLATES_DIR="$(dirname "$SCRIPT_DIR")/evidence/templates"
 
 # Auto-set common environment variables if not already set
@@ -45,12 +46,15 @@ evd_create() {
   
   # For packages, attach to specific package; for applications, attach to release bundle
   if [[ "${ATTACH_TO_PACKAGE:-}" == "true" ]]; then
+    # Determine package repository name based on service type
+    local package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local"
     jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
       --predicate-type "$predicate_type" \
       --package-name "${PACKAGE_NAME}" \
       --package-version "${PACKAGE_VERSION}" \
+      --package-repo-name "$package_repo_name" \
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
