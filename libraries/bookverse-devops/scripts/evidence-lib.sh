@@ -181,20 +181,6 @@ attach_package_sast_evidence() {
   export ATTACH_TO_PACKAGE="true"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/package/docker/sast-scan.json.template"
-  
-  # Debug: Check if template file exists
-  echo "🔍 Looking for template at: $template_file"
-  echo "🔍 SCRIPT_DIR: $SCRIPT_DIR"
-  echo "🔍 EVIDENCE_TEMPLATES_DIR: $EVIDENCE_TEMPLATES_DIR"
-  echo "🔍 PWD: $(pwd)"
-  echo "🔍 Template exists: $([ -f "$template_file" ] && echo "YES" || echo "NO")"
-  if [ ! -f "$template_file" ]; then
-    echo "🔍 Contents of $(dirname "$template_file"):"
-    ls -la "$(dirname "$template_file")" 2>/dev/null || echo "Directory not found"
-    echo "🔍 Contents of evidence/templates/package/docker:"
-    ls -la bookverse-infra/libraries/bookverse-devops/evidence/templates/package/docker/ 2>/dev/null || echo "Directory not found"
-  fi
-  
   process_template "$template_file" "sast-scan.json"
   
   printf "# SAST Scan\n\nStatic analysis results for %s package.\n" "$package_name" > sast-scan.md
