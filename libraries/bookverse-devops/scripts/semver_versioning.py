@@ -163,74 +163,9 @@ def compute_next_application_version(app_key: str, vm: Dict[str, Any], jfrog_url
     return bump_patch(str(seed))
 
 
-def compute_next_build_number(app_key: str, vm: Dict[str, Any], jfrog_url: str, token: str) -> str:
-    # Build number comes from the last AppTrust version's sources.builds[0].number
-    base = jfrog_url.rstrip("/") + "/apptrust/api/v1"
-    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    
-    # Get unique identifiers for race-condition safety
-    commit_sha = os.environ.get("GITHUB_SHA", "")[:8]
-    run_number = os.environ.get("GITHUB_RUN_NUMBER", "0")
-    run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
-
-    # Latest version first
-    vlist_url = f"{base}/applications/{urllib.parse.quote(app_key)}/versions?limit=1&order_by=created&order_asc=false"
-    try:
-        vlist = http_get(vlist_url, headers)
-    except Exception:
-        vlist = {}
-
-    def first_version(obj: Any) -> Optional[str]:
-        if isinstance(obj, dict):
-            arr = (
-                obj.get("versions")
-                or obj.get("results")
-                or obj.get("items")
-                or obj.get("data")
-                or []
-            )
-            if arr:
-                v = (arr[0] or {}).get("version") or (arr[0] or {}).get("name")
-                return v if isinstance(v, str) else None
-        return None
-
-    latest = first_version(vlist)
-    if latest:
-        try:
-            vinfo = http_get(
-                f"{base}/applications/{urllib.parse.quote(app_key)}/versions/{urllib.parse.quote(latest)}",
-                headers,
-            )
-        except Exception:
-            vinfo = {}
-        num = None
-        if isinstance(vinfo, dict):
-            try:
-                num = (((vinfo.get("sources") or {}).get("builds") or [])[0] or {}).get("number")
-            except Exception:
-                num = None
-        if isinstance(num, str) and parse_semver(num):
-            # Race-condition safe: Include unique identifiers in patch calculation
-            base_version = parse_semver(num)
-            if base_version:
-                major, minor, patch = base_version
-                unique_increment = int(run_number) % 100 + int(run_attempt) + len(commit_sha)
-                safe_patch = patch + 1 + unique_increment
-                return f"{major}.{minor}.{safe_patch}"
-
-    # Fallback to seed - IMPORTANT: bump the seed to avoid conflicts with promoted artifacts
-    entry = find_app_entry(vm, app_key)
-    seed = ((entry.get("seeds") or {}).get("build")) if entry else None
-    if not seed or not parse_semver(str(seed)):
-        raise SystemExit(f"No valid build seed for application {app_key}")
-    # Always bump the seed with unique increment to prevent conflicts
-    base_version = parse_semver(str(seed))
-    if base_version:
-        major, minor, patch = base_version
-        unique_increment = int(run_number) % 100 + int(run_attempt) + len(commit_sha)
-        safe_patch = patch + 1 + unique_increment
-        return f"{major}.{minor}.{safe_patch}"
-    return bump_patch(str(seed))
+# BUILD INFO VERSION COMPUTATION REMOVED
+# Build info should use GitHub's native build numbers (run_number-run_attempt), 
+# not computed semver versions. JFrog build info tracking uses GitHub's format.
 
 
 def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any], jfrog_url: str, token: str, project_key: Optional[str]) -> str:
@@ -336,7 +271,7 @@ def main():
     token = args.jfrog_token
 
     app_version = compute_next_application_version(app_key, vm, jfrog_url, token)
-    build_number = compute_next_build_number(app_key, vm, jfrog_url, token)
+    # Build numbers are not computed by semver - they use GitHub's run_number-run_attempt format
 
     pkg_tags: Dict[str, str] = {}
     if args.packages:
@@ -348,9 +283,8 @@ def main():
     if env_path:
         with open(env_path, "a", encoding="utf-8") as f:
             f.write(f"APP_VERSION={app_version}\n")
-            f.write(f"BUILD_NUMBER={build_number}\n")
-            # Default IMAGE_TAG to BUILD_NUMBER for compatibility
-            f.write(f"IMAGE_TAG={build_number}\n")
+            # BUILD_NUMBER is not set by semver - workflows use GitHub's run_number-run_attempt format
+            # IMAGE_TAG is set by workflow logic using appropriate package versions
             for k, v in pkg_tags.items():
                 key = re.sub(r"[^A-Za-z0-9_]", "_", k.upper())
                 f.write(f"DOCKER_TAG_{key}={v}\n")
@@ -359,7 +293,6 @@ def main():
     out = {
         "application_key": app_key,
         "app_version": app_version,
-        "build_number": build_number,
         "package_tags": pkg_tags,
         "source": "latest+bump or seed fallback"
     }
