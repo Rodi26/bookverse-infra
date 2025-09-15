@@ -57,6 +57,7 @@ evd_create() {
       --package-repo-name "$package_repo_name" \
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
+      --platform-url "${JFROG_URL:-${JF_URL:-}}" \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
       --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
   else
@@ -68,6 +69,7 @@ evd_create() {
       --release-bundle-version "${APP_VERSION}" \
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
+      --platform-url "${JFROG_URL:-${JF_URL:-}}" \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
       --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
   fi
