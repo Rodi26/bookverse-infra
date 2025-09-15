@@ -1,0 +1,22 @@
+{
+  "tool": "Invicti DAST",
+  "status": "PASSED",
+  "applicationKey": "${APPLICATION_KEY}",
+  "version": "${APP_VERSION}",
+  "environment": "QA",
+  "scanId": "${SCAN_ID}",
+  "generatedAt": "${NOW_TS}",
+  "findings": {
+    "critical": 0,
+    "high": 0,
+    "medium": ${MEDIUM_FINDINGS},
+    "low": ${LOW_FINDINGS}
+  },
+  "scanDetails": {
+    "duration": "${SCAN_DURATION}s",
+    "urlsScanned": ${URLS_SCANNED},
+    "vulnerabilitiesFound": ${TOTAL_VULNERABILITIES}
+  },
+  "attachStage": "QA",
+  "gateForPromotionTo": "STAGING"
+}

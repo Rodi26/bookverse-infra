@@ -1,0 +1,17 @@
+{
+  "tool": "Atlassian Jira",
+  "status": "APPROVED",
+  "applicationKey": "${APPLICATION_KEY}",
+  "version": "${APP_VERSION}",
+  "releaseId": "${RELEASE_ID}",
+  "generatedAt": "${NOW_TS}",
+  "release": {
+    "name": "${APPLICATION_KEY} v${APP_VERSION}",
+    "description": "Automated release for ${APPLICATION_KEY} version ${APP_VERSION}",
+    "ticketCount": ${TICKET_COUNT},
+    "resolvedIssues": ${RESOLVED_ISSUES},
+    "approvedBy": "${APPROVED_BY}"
+  },
+  "attachStage": "UNASSIGNED",
+  "gateForPromotionTo": "DEV"
+}

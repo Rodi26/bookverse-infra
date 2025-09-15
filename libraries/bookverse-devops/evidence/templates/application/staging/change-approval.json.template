@@ -1,0 +1,18 @@
+{
+  "tool": "ServiceNow Change Management",
+  "status": "APPROVED",
+  "applicationKey": "${APPLICATION_KEY}",
+  "version": "${APP_VERSION}",
+  "environment": "STAGING",
+  "changeId": "${CHANGE_ID}",
+  "generatedAt": "${NOW_TS}",
+  "approval": {
+    "approvedBy": "${APPROVED_BY}",
+    "approvedAt": "${APPROVED_AT}",
+    "changeType": "Standard",
+    "riskLevel": "Low",
+    "businessJustification": "Automated release promotion for ${APPLICATION_KEY} v${APP_VERSION}"
+  },
+  "attachStage": "STAGING",
+  "gateForPromotionTo": "PROD"
+}
