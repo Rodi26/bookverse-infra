@@ -1,0 +1,17 @@
+{
+  "tool": "Checkmarx SAST",
+  "status": "PASSED",
+  "serviceName": "${SERVICE_NAME}",
+  "packageName": "${PACKAGE_NAME}",
+  "version": "${PACKAGE_VERSION}",
+  "scanId": "${SCAN_ID}",
+  "generatedAt": "${NOW_TS}",
+  "findings": {
+    "critical": 0,
+    "high": ${HIGH_FINDINGS},
+    "medium": ${MEDIUM_FINDINGS},
+    "low": ${LOW_FINDINGS}
+  },
+  "attachStage": "BUILD",
+  "gateForPromotionTo": "DEV"
+}
