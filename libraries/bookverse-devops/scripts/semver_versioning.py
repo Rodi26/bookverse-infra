@@ -72,10 +72,7 @@ def compute_next_application_version(app_key: str, vm: Dict[str, Any], jfrog_url
     base = jfrog_url.rstrip("/") + "/apptrust/api/v1"
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
-    # Get unique identifiers for race-condition safety
-    commit_sha = os.environ.get("GITHUB_SHA", "")[:8]  # Short SHA for uniqueness
-    run_number = os.environ.get("GITHUB_RUN_NUMBER", "0")
-    run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+    # Simple version bumping - JFrog artifact uniqueness handled by checksums
     
     # 1) Prefer the most recently created version and bump its patch if SemVer
     latest_url = f"{base}/applications/{urllib.parse.quote(app_key)}/versions?limit=10&order_by=created&order_asc=false"
@@ -100,15 +97,8 @@ def compute_next_application_version(app_key: str, vm: Dict[str, Any], jfrog_url
 
     latest_created = first_version(latest_payload)
     if isinstance(latest_created, str) and parse_semver(latest_created):
-        # Race-condition safe: Include unique identifiers in patch calculation
-        # This ensures concurrent runs generate different versions
-        base_version = parse_semver(latest_created)
-        if base_version:
-            major, minor, patch = base_version
-            # Generate unique patch increment using run metadata
-            unique_increment = int(run_number) % 100 + int(run_attempt) + len(commit_sha)
-            safe_patch = patch + 1 + unique_increment
-            return f"{major}.{minor}.{safe_patch}"
+        # Simple patch bump - JFrog handles artifact uniqueness via checksums
+        return bump_patch(latest_created)
 
     # 2) Fallback: scan recent versions and bump the max SemVer present
     url = f"{base}/applications/{urllib.parse.quote(app_key)}/versions?limit=50&order_by=created&order_asc=false"
@@ -139,27 +129,15 @@ def compute_next_application_version(app_key: str, vm: Dict[str, Any], jfrog_url
     values = extract_versions(payload)
     latest = max_semver(values)
     if latest:
-        # Race-condition safe: Include unique identifiers in patch calculation
-        base_version = parse_semver(latest)
-        if base_version:
-            major, minor, patch = base_version
-            # Generate unique patch increment using run metadata
-            unique_increment = int(run_number) % 100 + int(run_attempt) + len(commit_sha)
-            safe_patch = patch + 1 + unique_increment
-            return f"{major}.{minor}.{safe_patch}"
+        # Simple patch bump - JFrog handles artifact uniqueness via checksums
+        return bump_patch(latest)
 
     # 3) Fallback to seed - IMPORTANT: bump the seed to avoid conflicts with promoted artifacts
     entry = find_app_entry(vm, app_key)
     seed = ((entry.get("seeds") or {}).get("application")) if entry else None
     if not seed or not parse_semver(str(seed)):
         raise SystemExit(f"No valid seed for application {app_key}")
-    # Always bump the seed with unique increment to prevent conflicts
-    base_version = parse_semver(str(seed))
-    if base_version:
-        major, minor, patch = base_version
-        unique_increment = int(run_number) % 100 + int(run_attempt) + len(commit_sha)
-        safe_patch = patch + 1 + unique_increment
-        return f"{major}.{minor}.{safe_patch}"
+    # Always bump the seed to prevent conflicts with promoted artifacts
     return bump_patch(str(seed))
 
 
