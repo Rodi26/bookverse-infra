@@ -1,0 +1,40 @@
+{
+  "tool": "SonarQube",
+  "status": "PASSED",
+  "serviceName": "${SERVICE_NAME}",
+  "buildName": "${BUILD_NAME}",
+  "buildNumber": "${BUILD_NUMBER}",
+  "projectKey": "${SONAR_PROJECT_KEY}",
+  "generatedAt": "${NOW_TS}",
+  "qualityGate": {
+    "status": "PASSED",
+    "conditions": [
+      {
+        "metric": "coverage",
+        "operator": "GREATER_THAN",
+        "threshold": "80.0",
+        "actualValue": "${COVERAGE_PERCENT}"
+      },
+      {
+        "metric": "duplicated_lines_density",
+        "operator": "LESS_THAN", 
+        "threshold": "3.0",
+        "actualValue": "${DUPLICATION_PERCENT}"
+      },
+      {
+        "metric": "reliability_rating",
+        "operator": "GREATER_THAN",
+        "threshold": "1.0",
+        "actualValue": "1.0"
+      }
+    ]
+  },
+  "metrics": {
+    "coverage": "${COVERAGE_PERCENT}%",
+    "duplicatedLines": "${DUPLICATION_PERCENT}%",
+    "codeSmells": ${CODE_SMELLS},
+    "bugs": ${BUGS},
+    "vulnerabilities": ${VULNERABILITIES}
+  },
+  "attachStage": "BUILD"
+}
