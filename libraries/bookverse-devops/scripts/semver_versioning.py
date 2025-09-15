@@ -206,19 +206,25 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             aql_headers["Content-Type"] = "text/plain"
             
             resp = http_post(aql_url, aql_headers, aql_query)
+            print(f"DEBUG: AQL query: {aql_query}", file=sys.stderr)
+            print(f"DEBUG: AQL response: {resp}", file=sys.stderr)
             if isinstance(resp, dict) and "results" in resp:
+                print(f"DEBUG: Found {len(resp.get('results', []))} items in repository", file=sys.stderr)
                 # Extract version numbers from paths/names
                 for item in resp.get("results", []):
                     path = item.get("path", "")
                     name = item.get("name", "")
                     
-                    # Look for version patterns in path (e.g., /web/assets/1.6.14/)
+                    # Look for version patterns in path 
+                    # Expected path: /recommendations/config/1.13.44/recommendations-settings.yaml
+                    # or: /recommendations/resources/5.9.42/stopwords.txt
                     import re
                     version_pattern = r'/(\d+\.\d+\.\d+)/'
                     match = re.search(version_pattern, path)
                     if match:
                         version = match.group(1)
                         if parse_semver(version):
+                            print(f"DEBUG: Found existing version {version} in path: {path}", file=sys.stderr)
                             existing_versions.append(version)
         except Exception as e:
             # FAIL FAST: Don't mask authentication or connectivity issues
