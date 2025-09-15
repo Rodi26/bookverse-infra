@@ -185,10 +185,11 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                     if isinstance(tag, str) and parse_semver(tag):
                         existing_versions.append(tag)
         except Exception as e:
-            # If Docker API fails, this could be an authentication issue
-            print(f"WARNING: Docker registry query failed for {package_name}: {e}", file=sys.stderr)
-            print(f"WARNING: This may indicate authentication issues with JFrog", file=sys.stderr)
-            # Continue with fallback logic, but now visible
+            # FAIL FAST: Don't mask authentication or connectivity issues
+            print(f"ERROR: Docker registry query failed for {package_name}: {e}", file=sys.stderr)
+            print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
+            print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
+            sys.exit(1)
     
     elif package_type == "generic":
         # For generic packages, try to query via AQL to find existing versions
@@ -220,12 +221,13 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                         if parse_semver(version):
                             existing_versions.append(version)
         except Exception as e:
-            # If AQL fails, this could be an authentication issue
-            print(f"WARNING: AQL query failed for {package_name}: {e}", file=sys.stderr)
-            print(f"WARNING: This may indicate authentication issues with JFrog", file=sys.stderr)
-            print(f"WARNING: AQL URL: {aql_url}", file=sys.stderr)
-            print(f"WARNING: Repo: {repo_key}", file=sys.stderr)
-            # Continue with fallback logic, but now visible
+            # FAIL FAST: Don't mask authentication or connectivity issues
+            print(f"ERROR: AQL query failed for {package_name}: {e}", file=sys.stderr)
+            print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
+            print(f"ERROR: AQL URL: {aql_url}", file=sys.stderr)
+            print(f"ERROR: Repo: {repo_key}", file=sys.stderr)
+            print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
+            sys.exit(1)
     
     # If we found existing versions, bump the latest one
     if existing_versions:
@@ -234,13 +236,11 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             return bump_patch(latest)
     
     # CRITICAL: If no existing versions found, this may indicate authentication failure
-    print(f"WARNING: No existing versions found for {package_name} in {package_type} repository", file=sys.stderr)
-    print(f"WARNING: This may indicate authentication or repository access issues", file=sys.stderr)
-    print(f"WARNING: Falling back to seed+1, but this may cause conflicts with promoted artifacts", file=sys.stderr)
-    
-    # Fallback: bump the seed version to avoid conflicts
-    # This ensures we don't reuse the exact seed version which may already exist
-    return bump_patch(str(seed))
+    print(f"ERROR: No existing versions found for {package_name} in {package_type} repository", file=sys.stderr)
+    print(f"ERROR: This may indicate authentication or repository access issues", file=sys.stderr)
+    print(f"ERROR: If this is a new package, manually verify repository access and auth", file=sys.stderr)
+    print(f"ERROR: For existing packages, this suggests auth failure - check JFROG_ACCESS_TOKEN", file=sys.stderr)
+    sys.exit(1)
 
 
 def main():
