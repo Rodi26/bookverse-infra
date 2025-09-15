@@ -216,10 +216,10 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                     name = item.get("name", "")
                     
                     # Look for version patterns in path 
-                    # Expected path: /recommendations/config/1.13.44/recommendations-settings.yaml
-                    # or: /recommendations/resources/5.9.42/stopwords.txt
+                    # Expected path: recommendations/config/1.13.44 or recommendations/resources/5.9.42
+                    # Version can be at end of path or followed by slash and filename
                     import re
-                    version_pattern = r'/(\d+\.\d+\.\d+)/'
+                    version_pattern = r'/(\d+\.\d+\.\d+)(?:/|$)'
                     match = re.search(version_pattern, path)
                     if match:
                         version = match.group(1)
