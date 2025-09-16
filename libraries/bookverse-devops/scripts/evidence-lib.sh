@@ -47,6 +47,12 @@ evd_create() {
   # Three modes: package, build, or release bundle
   if [[ "${ATTACH_TO_PACKAGE:-}" == "true" ]]; then
     # Mode 1: Attach to specific package
+    # Build URL args conditionally - only add --url if we have a value
+    local url_args=()
+    if [[ -n "${JFROG_URL:-${JF_URL:-}}" ]]; then
+      url_args+=(--url "${JFROG_URL:-${JF_URL:-}}")
+    fi
+    
     local package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local"
     jf evd create-evidence \
       --predicate "$predicate_file" \
@@ -57,11 +63,17 @@ evd_create() {
       --package-repo-name "$package_repo_name" \
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
-      --url "${JFROG_URL:-${JF_URL:-}}" \
+      "${url_args[@]}" \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
       --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
   elif [[ "${ATTACH_TO_BUILD:-}" == "true" ]]; then
     # Mode 2: Attach to build info
+    # Build URL args conditionally - only add --url if we have a value
+    local url_args=()
+    if [[ -n "${JFROG_URL:-${JF_URL:-}}" ]]; then
+      url_args+=(--url "${JFROG_URL:-${JF_URL:-}}")
+    fi
+    
     jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
@@ -70,11 +82,17 @@ evd_create() {
       --build-number "${BUILD_NUMBER}" \
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
-      --url "${JFROG_URL:-${JF_URL:-}}" \
+      "${url_args[@]}" \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
       --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
   else
     # Mode 3: Attach to release bundle (for application evidence)
+    # Build URL args conditionally - only add --url if we have a value
+    local url_args=()
+    if [[ -n "${JFROG_URL:-${JF_URL:-}}" ]]; then
+      url_args+=(--url "${JFROG_URL:-${JF_URL:-}}")
+    fi
+    
     jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
@@ -83,7 +101,7 @@ evd_create() {
       --release-bundle-version "${APP_VERSION}" \
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
-      --url "${JFROG_URL:-${JF_URL:-}}" \
+      "${url_args[@]}" \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
       --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
   fi
