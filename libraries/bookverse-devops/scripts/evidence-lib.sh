@@ -44,9 +44,9 @@ evd_create() {
   local md_args=()
   if [[ -n "$markdown_file" ]]; then md_args+=(--markdown "$markdown_file"); fi
   
-  # For packages, attach to specific package; for applications, attach to release bundle
+  # Three modes: package, build, or release bundle
   if [[ "${ATTACH_TO_PACKAGE:-}" == "true" ]]; then
-    # Determine package repository name based on service type
+    # Mode 1: Attach to specific package
     local package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local"
     jf evd create-evidence \
       --predicate "$predicate_file" \
@@ -60,7 +60,21 @@ evd_create() {
       --url "${JFROG_URL:-${JF_URL:-}}" \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
       --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
+  elif [[ "${ATTACH_TO_BUILD:-}" == "true" ]]; then
+    # Mode 2: Attach to build info
+    jf evd create-evidence \
+      --predicate "$predicate_file" \
+      "${md_args[@]}" \
+      --predicate-type "$predicate_type" \
+      --build-name "${BUILD_NAME}" \
+      --build-number "${BUILD_NUMBER}" \
+      --project "${PROJECT_KEY}" \
+      --provider-id github-actions \
+      --url "${JFROG_URL:-${JF_URL:-}}" \
+      --key "${EVIDENCE_PRIVATE_KEY:-}" \
+      --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
   else
+    # Mode 3: Attach to release bundle (for application evidence)
     jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
@@ -212,6 +226,7 @@ attach_build_fossa_evidence() {
   echo "📋 Generating FOSSA license evidence for build"
   generate_random_values
   
+  export ATTACH_TO_BUILD="true"
   export ATTACH_TO_PACKAGE="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/build/fossa-license-scan.json.template"
@@ -225,6 +240,7 @@ attach_build_sonar_evidence() {
   echo "📊 Generating SonarQube evidence for build"
   generate_random_values
   
+  export ATTACH_TO_BUILD="true"
   export ATTACH_TO_PACKAGE="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/build/sonar-quality-gate.json.template"
