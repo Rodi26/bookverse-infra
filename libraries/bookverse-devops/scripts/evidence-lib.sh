@@ -55,7 +55,7 @@ evd_create() {
     
     # Determine repository type based on package name/type
     local package_repo_name
-    if [[ "${PACKAGE_NAME:-}" =~ ^(config|resources|recommendation-config|recommendations-config)$ ]]; then
+    if [[ "${PACKAGE_NAME:-}" =~ ^(config|resources|recommendation-config|recommendations-config|recommendations-resources)$ ]]; then
       # Generic packages (config, resources) go to generic repository
       package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-generic-nonprod-local"
     else
