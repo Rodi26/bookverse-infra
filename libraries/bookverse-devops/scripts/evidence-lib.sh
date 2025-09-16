@@ -53,7 +53,15 @@ evd_create() {
       url_args+=(--url "${JFROG_URL:-${JF_URL:-}}")
     fi
     
-    local package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local"
+    # Determine repository type based on package name/type
+    local package_repo_name
+    if [[ "${PACKAGE_NAME:-}" =~ ^(config|resources|recommendation-config|recommendations-config)$ ]]; then
+      # Generic packages (config, resources) go to generic repository
+      package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-generic-nonprod-local"
+    else
+      # Docker images go to docker repository  
+      package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local"
+    fi
     jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
