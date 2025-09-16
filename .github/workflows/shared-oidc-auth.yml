@@ -48,7 +48,7 @@ jobs:
     steps:
       - name: "🔐 JFrog CLI OIDC Authentication"
         id: jfrog-cli-setup
-        uses: jfrog/setup-jfrog-cli@v4
+        uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
         env:
           JF_URL: ${{ inputs.jfrog-url }}
         with:
