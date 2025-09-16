@@ -282,12 +282,13 @@ attach_application_slsa_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
-  local template_file="$EVIDENCE_TEMPLATES_DIR/application/unassigned/slsa-provenance.json.template"
+  local template_file="$EVIDENCE_TEMPLATES_DIR/application/unassigned/slsa-provenance.json.template"                                                            
   process_template "$template_file" "slsa-provenance.json"
   
-  printf "# SLSA Provenance\n\nSupply chain provenance for %s v%s.\n" "$APPLICATION_KEY" "$APP_VERSION" > slsa-provenance.md
-  evd_create slsa-provenance.json "https://slsa.dev/provenance/v1" slsa-provenance.md
+  printf "# SLSA Provenance\n\nSupply chain provenance for %s v%s.\n" "$APPLICATION_KEY" "$APP_VERSION" > slsa-provenance.md                                    
+  evd_create slsa-provenance.json "https://slsa.dev/provenance/v1" slsa-provenance.md                                                                           
 }
 
 attach_application_jira_evidence() {
@@ -295,6 +296,7 @@ attach_application_jira_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/unassigned/jira-release.json.template"
   process_template "$template_file" "jira-release.json"
@@ -308,6 +310,7 @@ attach_application_smoke_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/dev/smoke-tests.json.template"
   process_template "$template_file" "smoke-tests.json"
@@ -321,6 +324,7 @@ attach_application_dast_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/qa/dast-scan.json.template"
   process_template "$template_file" "dast-scan.json"
@@ -334,6 +338,7 @@ attach_application_api_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/qa/api-tests.json.template"
   process_template "$template_file" "api-tests.json"
@@ -347,6 +352,7 @@ attach_application_iac_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/staging/iac-scan.json.template"
   process_template "$template_file" "iac-scan.json"
@@ -360,6 +366,7 @@ attach_application_pentest_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/staging/pentest.json.template"
   process_template "$template_file" "pentest.json"
@@ -373,6 +380,7 @@ attach_application_change_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/staging/change-approval.json.template"
   process_template "$template_file" "change-approval.json"
@@ -386,6 +394,7 @@ attach_application_deployment_evidence() {
   generate_random_values
   
   export ATTACH_TO_PACKAGE="false"
+  export ATTACH_TO_BUILD="false"
   
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/prod/deployment-verification.json.template"
   process_template "$template_file" "deployment-verification.json"
