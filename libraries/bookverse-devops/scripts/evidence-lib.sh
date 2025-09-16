@@ -244,7 +244,7 @@ attach_package_config_evidence() {
   process_template "$template_file" "config-bundle.json"
   
   printf "# Config Bundle\n\nConfiguration verification for %s package.\n" "$package_name" > config-bundle.md
-  evd_create config-bundle.json "Artifact Bundle" config-bundle.md
+  evd_create config-bundle.json "https://in-toto.io/Statement/v0.1" config-bundle.md
 }
 
 # Build Evidence Functions
