@@ -55,8 +55,8 @@ evd_create() {
     
     # Determine repository type based on package name/type
     local package_repo_name
-    if [[ "${PACKAGE_NAME:-}" =~ ^(config|resources|recommendation-config|recommendations-config|recommendations-resources|recommendations-config-.*\.tar\.gz|recommendations-resources-.*\.tar\.gz|web-assets-.*\.tar\.gz)$ ]]; then
-      # Generic packages (config, resources) go to generic repository
+    if [[ "${PACKAGE_NAME:-}" =~ \.(tar\.gz|zip|jar|war|tgz)$ ]] || [[ "${PACKAGE_NAME:-}" =~ ^(config|resources)$ ]]; then
+      # Generic packages (any compressed archives or config/resources) go to generic repository
       package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-generic-nonprod-local"
     else
       # Docker images go to docker repository  
