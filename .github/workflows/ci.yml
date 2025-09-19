@@ -790,6 +790,123 @@ jobs:
           
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
 
+      - name: "[Debug] Test JFrog and AppTrust Permissions"
+        run: |
+          echo "🔍 DEBUG: Testing various JFrog and AppTrust operations to isolate permission issues"
+          echo "🔐 Using JF_OIDC_TOKEN for authentication"
+          
+          BASE="${{ vars.JFROG_URL }}/apptrust/api/v1"
+          
+          echo ""
+          echo "📋 === BASIC CONNECTIVITY TESTS ==="
+          echo "🔗 Testing JFrog connectivity..."
+          jf rt ping || echo "❌ JFrog ping failed"
+          
+          echo ""
+          echo "📋 === BUILD INFO READ TESTS ==="
+          echo "🔍 Testing build info queries..."
+          
+          # Test reading build info for our current builds
+          echo "📦 Querying bookverse-core build info..."
+          jf rt build-info bookverse-core_CI_build-bookverse-core ${{ needs.build-bookverse-core.outputs.build_number }} --project "${{ vars.PROJECT_KEY }}" || echo "❌ Failed to read core build info"
+          
+          echo "📦 Querying bookverse-devops build info..."
+          jf rt build-info bookverse-devops_CI_build-bookverse-devops ${{ needs.build-bookverse-devops.outputs.build_number }} --project "${{ vars.PROJECT_KEY }}" || echo "❌ Failed to read devops build info"
+          
+          echo ""
+          echo "📋 === APPTRUST API READ TESTS ==="
+          echo "🔍 Testing AppTrust API read operations..."
+          
+          # Test getting applications
+          echo "📱 Getting applications..."
+          curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+               -H "Content-Type: application/json" \
+               "$BASE/applications" | jq '.' || echo "❌ Failed to get applications"
+          
+          # Test getting packages (if any exist)
+          echo "📦 Getting packages..."
+          curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+               -H "Content-Type: application/json" \
+               "$BASE/packages" | jq '.' || echo "❌ Failed to get packages"
+          
+          # Test getting specific application (if exists)
+          APP_KEY="${{ vars.APPLICATION_KEY }}"
+          echo "📱 Getting application: $APP_KEY..."
+          curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+               -H "Content-Type: application/json" \
+               "$BASE/applications/$APP_KEY" | jq '.' || echo "❌ Failed to get specific application (expected if doesn't exist)"
+          
+          # Test getting application versions for a known application
+          echo "📋 Getting application versions for $APP_KEY..."
+          curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+               -H "Content-Type: application/json" \
+               "$BASE/applications/$APP_KEY/versions" | jq '.' || echo "❌ Failed to get application versions (expected if app doesn't exist)"
+          
+          echo ""
+          echo "📋 === APPTRUST API WRITE TESTS (NON-DESTRUCTIVE) ==="
+          echo "🔍 Testing AppTrust API write operations on existing data..."
+          
+          # Try to get a list of existing applications and test tagging on one
+          echo "📱 Looking for existing applications to test tag modification..."
+          EXISTING_APPS=$(curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+                              -H "Content-Type: application/json" \
+                              "$BASE/applications" | jq -r '.applications[]?.application_key // empty' 2>/dev/null | head -3)
+          
+          if [[ -n "$EXISTING_APPS" ]]; then
+            for app in $EXISTING_APPS; do
+              echo "🏷️ Testing tag operations on existing app: $app"
+              
+              # Get versions for this app
+              VERSIONS=$(curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+                             -H "Content-Type: application/json" \
+                             "$BASE/applications/$app/versions" | jq -r '.versions[]?.version // empty' 2>/dev/null | head -1)
+              
+              if [[ -n "$VERSIONS" ]]; then
+                VERSION=$(echo "$VERSIONS" | head -1)
+                echo "📋 Testing tag modification on $app@$VERSION..."
+                
+                # Get current tags
+                echo "📋 Current tags for $app@$VERSION:"
+                curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+                     -H "Content-Type: application/json" \
+                     "$BASE/applications/$app/versions/$VERSION" | jq '.tag // "no-tag"' || echo "❌ Failed to get version details"
+                
+                # Try to update tag (non-destructive test)
+                echo "🏷️ Testing tag update (adding 'debug-test' tag)..."
+                curl -s -w "HTTP_%{http_code}" -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+                     -H "Content-Type: application/json" \
+                     -X PATCH \
+                     -d '{"tag": "debug-test"}' \
+                     "$BASE/applications/$app/versions/$VERSION" || echo "❌ Failed to update tag"
+                
+                break # Only test one version
+              else
+                echo "ℹ️ No versions found for app: $app"
+              fi
+            done
+          else
+            echo "ℹ️ No existing applications found to test tag operations"
+          fi
+          
+          echo ""
+          echo "📋 === REPOSITORY ACCESS TESTS ==="
+          echo "🔍 Testing repository access patterns..."
+          
+          # Test artifact search in known repositories
+          echo "📦 Testing pypi repository access..."
+          jf rt search "${{ vars.PROJECT_KEY }}-pypi-cache-local/*" --project "${{ vars.PROJECT_KEY }}" || echo "❌ Failed to search pypi repository"
+          
+          echo "📦 Testing generic repository access..."
+          jf rt search "${{ vars.PROJECT_KEY }}-infra-internal-generic-nonprod-local/*" --project "${{ vars.PROJECT_KEY }}" || echo "❌ Failed to search generic repository (expected if empty)"
+          
+          echo ""
+          echo "📋 === DEBUG SUMMARY ==="
+          echo "✅ Debug tests completed - check outputs above for permission patterns"
+          echo "🔐 Token available: $([ -n "$JF_OIDC_TOKEN" ] && echo "YES" || echo "NO")"
+          echo "🏷️ Application Key: ${{ vars.APPLICATION_KEY }}"
+          echo "🏗️ Project Key: ${{ vars.PROJECT_KEY }}"
+          echo "🌐 JFrog URL: ${{ vars.JFROG_URL }}"
+
       - name: "[Create] Application Version"
         run: |
           echo "🚀 Creating AppTrust application version: ${{ env.APP_VERSION }}"
