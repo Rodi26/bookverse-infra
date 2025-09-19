@@ -144,10 +144,12 @@ jobs:
     runs-on: ubuntu-latest
     
     outputs:
-      build_name: ${{ env.BUILD_NAME }}
-      build_number: ${{ env.BUILD_NUMBER }}
+      build_name: ${{ steps.set-build-info.outputs.build_name }}
+      build_number: ${{ steps.set-build-info.outputs.build_number }}
       app_version: ${{ steps.determine-semver.outputs.app_version }}
       core_version: ${{ steps.determine-semver.outputs.core_version }}
+      package_version: ${{ steps.set-version.outputs.package_version }}
+      coverage_percent: ${{ steps.test-coverage.outputs.coverage_percent }}
     defaults:
       run:
         shell: bash
@@ -155,11 +157,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    outputs:
-      build_name: ${{ steps.set-build-info.outputs.build_name }}
-      build_number: ${{ steps.set-build-info.outputs.build_number }}
-      package_version: ${{ steps.set-version.outputs.package_version }}
-      coverage_percent: ${{ steps.test-coverage.outputs.coverage_percent }}
 
     steps:
       - name: "[Setup] Checkout"
@@ -424,10 +421,11 @@ jobs:
     runs-on: ubuntu-latest
     
     outputs:
-      build_name: ${{ env.BUILD_NAME }}
-      build_number: ${{ env.BUILD_NUMBER }}
+      build_name: ${{ steps.set-build-info.outputs.build_name }}
+      build_number: ${{ steps.set-build-info.outputs.build_number }}
       app_version: ${{ steps.determine-semver.outputs.app_version }}
       devops_version: ${{ steps.determine-semver.outputs.devops_version }}
+      package_version: ${{ steps.set-version.outputs.package_version }}
     defaults:
       run:
         shell: bash
@@ -435,10 +433,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    outputs:
-      build_name: ${{ steps.set-build-info.outputs.build_name }}
-      build_number: ${{ steps.set-build-info.outputs.build_number }}
-      package_version: ${{ steps.set-version.outputs.package_version }}
 
     steps:
       - name: "[Setup] Checkout"
