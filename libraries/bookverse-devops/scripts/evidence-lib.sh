@@ -484,12 +484,14 @@ attach_evidence_for_stage() {
 
 # Shared setup function for promotion workflows
 setup_promotion_environment() {
-  # Source promotion library if not already loaded
+  # Source shared promotion library if not already loaded
   if ! command -v advance_one_step &> /dev/null; then
-    if [[ -f ".github/scripts/promote_lib.sh" ]]; then
-      source .github/scripts/promote_lib.sh
+    local shared_promote_lib="$(dirname "$SCRIPT_DIR")/scripts/promote-lib.sh"
+    if [[ -f "$shared_promote_lib" ]]; then
+      source "$shared_promote_lib"
+      echo "✅ Loaded shared promotion library: $shared_promote_lib"
     else
-      echo "❌ promote_lib.sh not found" >&2
+      echo "❌ Shared promotion library not found at: $shared_promote_lib" >&2
       return 1
     fi
   fi
