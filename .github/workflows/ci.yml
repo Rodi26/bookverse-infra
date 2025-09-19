@@ -688,13 +688,9 @@ jobs:
             fi
           fi
           
-          # Create the application version payload
+          # Create the application version payload (using simple string format like recommendations service)
           SOURCES_JSON=$(echo "$SOURCES" | jq -c .)
-          APP_VERSION_PAYLOAD=$(jq -n \
-            --arg version "$APP_VERSION" \
-            --arg tag "$APP_TAG" \
-            --argjson sources "$SOURCES_JSON" \
-            '{"version": $version, "tag": $tag, "sources": {"builds": $sources}}')
+          APP_VERSION_PAYLOAD='{"version":"'$APP_VERSION'","tag":"'$APP_TAG'","sources":{"builds":'$SOURCES_JSON'}}'
           
           echo "📋 Creating application version with payload:"
           echo "$APP_VERSION_PAYLOAD" | jq . || echo "$APP_VERSION_PAYLOAD"
