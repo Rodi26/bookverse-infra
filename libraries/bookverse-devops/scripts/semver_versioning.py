@@ -244,7 +244,8 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-helm-nonprod-local"
             
             # AQL query to find Helm charts in the repository
-            aql_query = f'''items.find({{"repo":"{repo_key}","type":"file","name":"*.tgz"}}).include("name","path")'''
+            # Note: AQL wildcards use $match instead of shell-style *
+            aql_query = f'''items.find({{"repo":"{repo_key}","type":"file","name":{{"$match":"*.tgz"}}}}).include("name","path")'''
             aql_url = f"{jfrog_url.rstrip('/')}/artifactory/api/search/aql"
             aql_headers = headers.copy()
             aql_headers["Content-Type"] = "text/plain"
