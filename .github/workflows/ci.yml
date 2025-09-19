@@ -143,6 +143,9 @@ jobs:
     needs: [analyze-commit, authenticate]
     if: needs.analyze-commit.outputs.create_app_version == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     
     outputs:
       app_version: ${{ steps.generate-version.outputs.app_version }}
