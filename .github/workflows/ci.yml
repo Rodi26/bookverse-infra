@@ -471,7 +471,7 @@ jobs:
           echo "📦 Uploading DevOps artifacts to JFrog"
           
           # Upload DevOps package and manifest to generic repository
-          GENERIC_REPO="${{ vars.PROJECT_KEY }}-generic-local"
+          GENERIC_REPO="${{ vars.PROJECT_KEY }}-infra-internal-generic-nonprod-local"
           jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "$GENERIC_REPO/devops/$PACKAGE_VERSION/bookverse-devops-${PACKAGE_VERSION}.tar.gz" \
             --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
           
