@@ -138,118 +138,16 @@ jobs:
           JF_URL: ${{ vars.JFROG_URL }}
           JF_PROJECT: ${{ vars.PROJECT_KEY }}
 
-  compute-versions:
-    name: "Compute Package Versions (Dual-Build Pattern)"
-    needs: [analyze-commit, authenticate]
-    if: needs.analyze-commit.outputs.create_app_version == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    
-    outputs:
-      app_version: ${{ steps.generate-version.outputs.app_version }}
-      core_version: ${{ steps.generate-version.outputs.core_version }}
-      devops_version: ${{ steps.generate-version.outputs.devops_version }}
-    
-    steps:
-      - name: "[Setup] Checkout"
-        uses: actions/checkout@v4
-
-      - name: "[Setup] Checkout bookverse-infra for semver scripts"
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository_owner }}/bookverse-infra
-          path: bookverse-infra
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: "[Setup] JFrog CLI"
-        uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
-        with:
-          version: latest
-          oidc-provider-name: bookverse-infra-github
-          oidc-audience: ${{ vars.JFROG_URL }}
-          disable-job-summary: true
-          disable-auto-build-publish: true
-          disable-auto-evidence-collection: false
-        env:
-          JF_URL: ${{ vars.JFROG_URL }}
-          JF_PROJECT: ${{ vars.PROJECT_KEY }}
-
-      - name: "[Setup] Determine SemVer (Dual-Build Adaptation)"
-        id: generate-version
-        run: |
-          set -euo pipefail
-          
-          if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
-            echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
-            exit 1
-          fi
-          echo "✅ Using OIDC token for semver determination"
-          
-          # Use shared semver scripts adapted for dual-build aggregation
-          APPLICATION_KEY="bookverse-infra"
-          echo "📋 Using shared semver logic from bookverse-infra for dual-build aggregation"
-          
-          INFRA_SCRIPTS_PATH="bookverse-infra/libraries/bookverse-devops/scripts"
-          if [[ -f "$INFRA_SCRIPTS_PATH/determine-semver.sh" ]]; then
-            cp "$INFRA_SCRIPTS_PATH/determine-semver.sh" .
-            cp "$INFRA_SCRIPTS_PATH/semver_versioning.py" .
-            chmod +x determine-semver.sh
-            echo "✅ Using shared semver scripts from bookverse-infra"
-          else
-            echo "❌ Shared semver scripts not found in bookverse-infra at $INFRA_SCRIPTS_PATH" >&2
-            exit 1
-          fi
-          
-          echo "🔍 Calculating version for dual-build application using shared logic..."
-          SEMVER_OUTPUT=$(./determine-semver.sh \
-            --application-key "$APPLICATION_KEY" \
-            --version-map "./config/version-map.yaml" \
-            --jfrog-url "${{ vars.JFROG_URL }}" \
-            --jfrog-token "$JF_OIDC_TOKEN" \
-            --project-key "${{ vars.PROJECT_KEY }}" \
-            --packages "bookverse-core,bookverse-devops" \
-            --verbose)
-          
-          JSON_LINE=$(echo "$SEMVER_OUTPUT" | grep '{"application_key"')
-          APP_VERSION=$(echo "$JSON_LINE" | jq -r '.app_version')
-          
-          if [[ -z "$APP_VERSION" || "$APP_VERSION" == "null" ]]; then
-            echo "❌ Failed to extract APP_VERSION from semver output" >&2
-            echo "📋 Semver output: $SEMVER_OUTPUT" >&2
-            exit 1
-          fi
-          
-          # Extract individual package versions from semver output
-          CORE_VERSION=$(echo "$JSON_LINE" | jq -r '.package_tags."bookverse-core" // empty')
-          DEVOPS_VERSION=$(echo "$JSON_LINE" | jq -r '.package_tags."bookverse-devops" // empty')
-          
-          if [[ -z "$CORE_VERSION" ]]; then
-            echo "❌ Failed to determine CORE_VERSION from semver script" >&2
-            echo "📋 Available package_tags: $(echo "$JSON_LINE" | jq -r '.package_tags | keys[]')" >&2
-            exit 1
-          fi
-          
-          if [[ -z "$DEVOPS_VERSION" ]]; then
-            echo "❌ Failed to determine DEVOPS_VERSION from semver script" >&2
-            echo "📋 Available package_tags: $(echo "$JSON_LINE" | jq -r '.package_tags | keys[]')" >&2
-            exit 1
-          fi
-          
-          echo "🏷️ Generated Application Version (dual-build): $APP_VERSION"
-          echo "🏷️ Package Versions:"
-          echo "   📦 bookverse-core: $CORE_VERSION"
-          echo "   🛠️ bookverse-devops: $DEVOPS_VERSION"
-          
-          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
-          echo "core_version=$CORE_VERSION" >> $GITHUB_OUTPUT
-          echo "devops_version=$DEVOPS_VERSION" >> $GITHUB_OUTPUT
-
   build-bookverse-core:
     name: "Build: bookverse-core (Always Runs)"
-    needs: [analyze-commit, authenticate, compute-versions]
+    needs: [analyze-commit, authenticate]
     runs-on: ubuntu-latest
+    
+    outputs:
+      build_name: ${{ env.BUILD_NAME }}
+      build_number: ${{ env.BUILD_NUMBER }}
+      app_version: ${{ steps.determine-semver.outputs.app_version }}
+      core_version: ${{ steps.determine-semver.outputs.core_version }}
     defaults:
       run:
         shell: bash
@@ -343,25 +241,78 @@ jobs:
           echo "COVERAGE_PERCENT=$COVERAGE_PERCENT" >> $GITHUB_ENV
           echo "✅ Tests passed with $COVERAGE_PERCENT% coverage"
 
+      - name: "[Setup] Determine SemVer"
+        id: determine-semver
+        run: |
+          set -euo pipefail
+          APPLICATION_KEY="bookverse-infra"
+          if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
+            echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
+            exit 1
+          fi
+          echo "✅ Using persisted JFrog access token for semver determination"
+          echo "📋 Using shared semver logic from bookverse-infra"
+          INFRA_SCRIPTS_PATH="../bookverse-devops/scripts"
+          if [[ -f "$INFRA_SCRIPTS_PATH/determine-semver.sh" ]]; then
+            cp "$INFRA_SCRIPTS_PATH/determine-semver.sh" .
+            cp "$INFRA_SCRIPTS_PATH/semver_versioning.py" .
+            chmod +x determine-semver.sh
+            echo "✅ Using shared semver scripts from bookverse-infra"
+          else
+            echo "❌ Shared semver scripts not found in bookverse-infra at $INFRA_SCRIPTS_PATH" >&2
+            exit 1
+          fi
+          echo "🔍 Calculating version for bookverse-core package..."
+          SEMVER_OUTPUT=$(./determine-semver.sh \
+            --application-key "$APPLICATION_KEY" \
+            --version-map "../../config/version-map.yaml" \
+            --jfrog-url "${{ vars.JFROG_URL }}" \
+            --jfrog-token "$JF_OIDC_TOKEN" \
+            --project-key "${{ vars.PROJECT_KEY }}" \
+            --packages "bookverse-core" \
+            --verbose)
+          JSON_LINE=$(echo "$SEMVER_OUTPUT" | grep '{"application_key"')
+          APP_VERSION=$(echo "$JSON_LINE" | jq -r '.app_version')
+          if [[ -z "$APP_VERSION" || "$APP_VERSION" == "null" ]]; then
+            echo "❌ Failed to extract APP_VERSION from semver output" >&2
+            echo "📋 Semver output: $SEMVER_OUTPUT" >&2
+            exit 1
+          fi
+          echo "📋 Extracting package version from JSON output:"
+          
+          CORE_VERSION=$(echo "$JSON_LINE" | jq -r '.package_tags."bookverse-core" // empty')
+          if [[ -z "$CORE_VERSION" ]]; then
+            echo "❌ Failed to determine CORE_VERSION from semver script" >&2
+            echo "📋 Available package_tags: $(echo "$JSON_LINE" | jq -r '.package_tags | keys[]')" >&2
+            exit 1
+          fi
+          
+          echo "🏷️ Package Version: bookverse-core: $CORE_VERSION"
+          echo "🏷️ Application Version: $APP_VERSION"
+          
+          echo "CORE_VERSION=$CORE_VERSION" >> $GITHUB_ENV
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "core_version=$CORE_VERSION" >> $GITHUB_OUTPUT
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+
       - name: "[Setup] Update Package Version"
         run: |
           set -euo pipefail
           
-          COMPUTED_VERSION="${{ needs.compute-versions.outputs.core_version }}"
-          echo "🏷️ Using computed version for bookverse-core: $COMPUTED_VERSION"
+          echo "🏷️ Using computed version for bookverse-core: $CORE_VERSION"
           
           # Update version in pyproject.toml 
           if [[ -f "pyproject.toml" ]]; then
             # Use sed to replace the version line
-            sed -i.bak "s/^version = .*/version = \"$COMPUTED_VERSION\"/" pyproject.toml
+            sed -i.bak "s/^version = .*/version = \"$CORE_VERSION\"/" pyproject.toml
             
             # Verify the change
             NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
-            if [[ "$NEW_VERSION" == "$COMPUTED_VERSION" ]]; then
-              echo "✅ Updated pyproject.toml version to $COMPUTED_VERSION"
+            if [[ "$NEW_VERSION" == "$CORE_VERSION" ]]; then
+              echo "✅ Updated pyproject.toml version to $CORE_VERSION"
             else
               echo "❌ Failed to update version in pyproject.toml" >&2
-              echo "Expected: $COMPUTED_VERSION, Found: $NEW_VERSION" >&2
+              echo "Expected: $CORE_VERSION, Found: $NEW_VERSION" >&2
               exit 1
             fi
           else
@@ -469,8 +420,14 @@ jobs:
 
   build-bookverse-devops:
     name: "Build: bookverse-devops (Always Runs)"  
-    needs: [analyze-commit, authenticate, compute-versions]
+    needs: [analyze-commit, authenticate]
     runs-on: ubuntu-latest
+    
+    outputs:
+      build_name: ${{ env.BUILD_NAME }}
+      build_number: ${{ env.BUILD_NUMBER }}
+      app_version: ${{ steps.determine-semver.outputs.app_version }}
+      devops_version: ${{ steps.determine-semver.outputs.devops_version }}
     defaults:
       run:
         shell: bash
@@ -573,10 +530,64 @@ jobs:
           print('✅ All YAML files validated')
           "
 
+      - name: "[Setup] Determine SemVer"
+        id: determine-semver
+        run: |
+          set -euo pipefail
+          APPLICATION_KEY="bookverse-infra"
+          if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
+            echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
+            exit 1
+          fi
+          echo "✅ Using persisted JFrog access token for semver determination"
+          echo "📋 Using shared semver logic from bookverse-infra"
+          INFRA_SCRIPTS_PATH="scripts"
+          if [[ -f "$INFRA_SCRIPTS_PATH/determine-semver.sh" ]]; then
+            cp "$INFRA_SCRIPTS_PATH/determine-semver.sh" .
+            cp "$INFRA_SCRIPTS_PATH/semver_versioning.py" .
+            chmod +x determine-semver.sh
+            echo "✅ Using local semver scripts"
+          else
+            echo "❌ Shared semver scripts not found at $INFRA_SCRIPTS_PATH" >&2
+            exit 1
+          fi
+          echo "🔍 Calculating version for bookverse-devops package..."
+          SEMVER_OUTPUT=$(./determine-semver.sh \
+            --application-key "$APPLICATION_KEY" \
+            --version-map "../../config/version-map.yaml" \
+            --jfrog-url "${{ vars.JFROG_URL }}" \
+            --jfrog-token "$JF_OIDC_TOKEN" \
+            --project-key "${{ vars.PROJECT_KEY }}" \
+            --packages "bookverse-devops" \
+            --verbose)
+          JSON_LINE=$(echo "$SEMVER_OUTPUT" | grep '{"application_key"')
+          APP_VERSION=$(echo "$JSON_LINE" | jq -r '.app_version')
+          if [[ -z "$APP_VERSION" || "$APP_VERSION" == "null" ]]; then
+            echo "❌ Failed to extract APP_VERSION from semver output" >&2
+            echo "📋 Semver output: $SEMVER_OUTPUT" >&2
+            exit 1
+          fi
+          echo "📋 Extracting package version from JSON output:"
+          
+          DEVOPS_VERSION=$(echo "$JSON_LINE" | jq -r '.package_tags."bookverse-devops" // empty')
+          if [[ -z "$DEVOPS_VERSION" ]]; then
+            echo "❌ Failed to determine DEVOPS_VERSION from semver script" >&2
+            echo "📋 Available package_tags: $(echo "$JSON_LINE" | jq -r '.package_tags | keys[]')" >&2
+            exit 1
+          fi
+          
+          echo "🏷️ Package Version: bookverse-devops: $DEVOPS_VERSION"
+          echo "🏷️ Application Version: $APP_VERSION"
+          
+          echo "DEVOPS_VERSION=$DEVOPS_VERSION" >> $GITHUB_ENV
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "devops_version=$DEVOPS_VERSION" >> $GITHUB_OUTPUT
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+
       - name: "[Build] Package DevOps artifacts"
         id: set-version
         run: |
-          PACKAGE_VERSION="${{ needs.compute-versions.outputs.devops_version }}"
+          PACKAGE_VERSION="$DEVOPS_VERSION"
           echo "🏷️ Using computed version for bookverse-devops: $PACKAGE_VERSION"
           echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
@@ -605,8 +616,8 @@ jobs:
           
           echo "📦 Uploading DevOps artifacts to JFrog"
           
-          # Upload DevOps package and manifest to generic repository (TEMP: using existing repo for testing)
-          GENERIC_REPO="${{ vars.PROJECT_KEY }}-pypi-cache-local"
+          # Upload DevOps package and manifest to generic repository
+          GENERIC_REPO="${{ vars.PROJECT_KEY }}-infra-internal-generic-nonprod-local"
           jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "$GENERIC_REPO/devops/$PACKAGE_VERSION/bookverse-devops-${PACKAGE_VERSION}.tar.gz" \
             --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
           
@@ -680,7 +691,7 @@ jobs:
 
   create-promote:
     name: "Create Application Version & Promote (Conditional)"
-    needs: [analyze-commit, compute-versions, build-bookverse-core, build-bookverse-devops]
+    needs: [analyze-commit, build-bookverse-core, build-bookverse-devops]
     if: needs.analyze-commit.outputs.create_app_version == 'true' && ((needs.build-bookverse-core.result == 'success' || needs.build-bookverse-devops.result == 'success') || (needs.build-bookverse-core.result == 'skipped' && needs.build-bookverse-devops.result == 'skipped'))
     runs-on: ubuntu-latest
     permissions:
@@ -749,11 +760,12 @@ jobs:
 
       - name: "[Setup] Use Computed Versions" 
         run: |
-          APP_VERSION="${{ needs.compute-versions.outputs.app_version }}"
-          CORE_VERSION="${{ needs.compute-versions.outputs.core_version }}"
-          DEVOPS_VERSION="${{ needs.compute-versions.outputs.devops_version }}"
+          # Get application version from either build job (they should be the same)
+          APP_VERSION="${{ needs.build-bookverse-core.outputs.app_version || needs.build-bookverse-devops.outputs.app_version }}"
+          CORE_VERSION="${{ needs.build-bookverse-core.outputs.core_version }}"
+          DEVOPS_VERSION="${{ needs.build-bookverse-devops.outputs.devops_version }}"
           
-          echo "🏷️ Using pre-computed versions from compute-versions job:"
+          echo "🏷️ Using computed versions from build jobs:"
           echo "   🏷️ Application: $APP_VERSION"
           echo "   📦 bookverse-core: $CORE_VERSION"
           echo "   🛠️ bookverse-devops: $DEVOPS_VERSION"

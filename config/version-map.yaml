@@ -12,7 +12,7 @@ applications:
         name: bookverse-core  
         seed: 2.1.7  # Random seed for core library
       
-      # Packages from bookverse-devops build (DevOps tooling) - TEMP: using python type for testing
-      - type: python
+      # Packages from bookverse-devops build (DevOps tooling)
+      - type: generic
         name: bookverse-devops
         seed: 1.0.9  # Random seed for devops package
