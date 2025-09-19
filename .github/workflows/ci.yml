@@ -522,7 +522,7 @@ jobs:
   create-promote:
     name: "Create Application Version & Promote (Conditional)"
     needs: [analyze-commit, build-bookverse-core, build-bookverse-devops]
-    if: needs.analyze-commit.outputs.create_app_version == 'true' && (needs.build-bookverse-core.result == 'success' || needs.build-bookverse-core.result == 'skipped') && (needs.build-bookverse-devops.result == 'success' || needs.build-bookverse-devops.result == 'skipped')
+    if: needs.analyze-commit.outputs.create_app_version == 'true' && ((needs.build-bookverse-core.result == 'success' || needs.build-bookverse-devops.result == 'success') || (needs.build-bookverse-core.result == 'skipped' && needs.build-bookverse-devops.result == 'skipped'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -624,17 +624,68 @@ jobs:
           TAG_INDEX=$((${GITHUB_RUN_NUMBER:-0} % ${#TAG_OPTIONS[@]}))
           APP_TAG="${TAG_OPTIONS[$TAG_INDEX]}"
           
-          # Build sources array for dual builds
+          # Build sources array for dual builds - handle mixed scenarios
           SOURCES='[]'
           
+          # Function to get latest build info from JFrog
+          get_latest_build() {
+            local build_name_pattern="$1"
+            echo "🔍 Searching for latest build: $build_name_pattern"
+            
+            # Use JFrog CLI to get latest build
+            local latest_build
+            latest_build=$(jf rt search "*" --build "$build_name_pattern" --limit 1 --sort-by created --sort-order desc 2>/dev/null | jq -r '.[0].build_name // empty' 2>/dev/null || echo "")
+            
+            if [[ -n "$latest_build" ]]; then
+              # Extract build number from the latest build
+              local build_number
+              build_number=$(jf rt search "*" --build "$build_name_pattern" --limit 1 --sort-by created --sort-order desc 2>/dev/null | jq -r '.[0].build_number // empty' 2>/dev/null || echo "")
+              echo "✅ Found latest build: $latest_build#$build_number"
+              echo "$latest_build#$build_number"
+            else
+              echo "⚠️ No previous builds found for: $build_name_pattern"
+              echo ""
+            fi
+          }
+          
+          # Handle bookverse-core builds
           if [[ "${{ needs.build-bookverse-core.result }}" == "success" ]]; then
+            echo "📦 Using current bookverse-core build: ${{ needs.build-bookverse-core.outputs.build_name }}/${{ needs.build-bookverse-core.outputs.build_number }}"
             CORE_SOURCE='{"name":"${{ needs.build-bookverse-core.outputs.build_name }}","number":"${{ needs.build-bookverse-core.outputs.build_number }}","repository_key":"${{ vars.PROJECT_KEY }}-build-info","include_dependencies":false}'
             SOURCES=$(echo "$SOURCES" | jq ". + [$CORE_SOURCE]")
+          elif [[ "${{ needs.build-bookverse-devops.result }}" == "success" ]]; then
+            # DevOps build succeeded but core was skipped - get latest core build
+            echo "🔍 bookverse-core build was skipped, finding latest existing build..."
+            LATEST_CORE=$(get_latest_build "bookverse-core_CI_*")
+            if [[ -n "$LATEST_CORE" && "$LATEST_CORE" != "" ]]; then
+              CORE_BUILD_NAME="${LATEST_CORE%#*}"
+              CORE_BUILD_NUMBER="${LATEST_CORE#*#}"
+              echo "📦 Using latest bookverse-core build: $CORE_BUILD_NAME/$CORE_BUILD_NUMBER"
+              CORE_SOURCE='{"name":"'$CORE_BUILD_NAME'","number":"'$CORE_BUILD_NUMBER'","repository_key":"${{ vars.PROJECT_KEY }}-build-info","include_dependencies":false}'
+              SOURCES=$(echo "$SOURCES" | jq ". + [$CORE_SOURCE]")
+            else
+              echo "⚠️ No existing bookverse-core builds found"
+            fi
           fi
           
+          # Handle bookverse-devops builds  
           if [[ "${{ needs.build-bookverse-devops.result }}" == "success" ]]; then
+            echo "📦 Using current bookverse-devops build: ${{ needs.build-bookverse-devops.outputs.build_name }}/${{ needs.build-bookverse-devops.outputs.build_number }}"
             DEVOPS_SOURCE='{"name":"${{ needs.build-bookverse-devops.outputs.build_name }}","number":"${{ needs.build-bookverse-devops.outputs.build_number }}","repository_key":"${{ vars.PROJECT_KEY }}-build-info","include_dependencies":false}'
             SOURCES=$(echo "$SOURCES" | jq ". + [$DEVOPS_SOURCE]")
+          elif [[ "${{ needs.build-bookverse-core.result }}" == "success" ]]; then
+            # Core build succeeded but devops was skipped - get latest devops build
+            echo "🔍 bookverse-devops build was skipped, finding latest existing build..."
+            LATEST_DEVOPS=$(get_latest_build "bookverse-devops_CI_*")
+            if [[ -n "$LATEST_DEVOPS" && "$LATEST_DEVOPS" != "" ]]; then
+              DEVOPS_BUILD_NAME="${LATEST_DEVOPS%#*}"
+              DEVOPS_BUILD_NUMBER="${LATEST_DEVOPS#*#}"
+              echo "📦 Using latest bookverse-devops build: $DEVOPS_BUILD_NAME/$DEVOPS_BUILD_NUMBER"
+              DEVOPS_SOURCE='{"name":"'$DEVOPS_BUILD_NAME'","number":"'$DEVOPS_BUILD_NUMBER'","repository_key":"${{ vars.PROJECT_KEY }}-build-info","include_dependencies":false}'
+              SOURCES=$(echo "$SOURCES" | jq ". + [$DEVOPS_SOURCE]")
+            else
+              echo "⚠️ No existing bookverse-devops builds found"
+            fi
           fi
           
           APP_VERSION_PAYLOAD='{"version":"'$APP_VERSION'","tag":"'$APP_TAG'","sources":{"builds":'$(echo "$SOURCES" | jq -c .)'}}'"
