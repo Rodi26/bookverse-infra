@@ -269,13 +269,20 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                             print(f"DEBUG: Found existing Helm version {version} in chart: {name}", file=sys.stderr)
                             existing_versions.append(version)
         except Exception as e:
-            # FAIL FAST: Don't mask authentication or connectivity issues
-            print(f"ERROR: Helm repository query failed for {package_name}: {e}", file=sys.stderr)
-            print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
-            print(f"ERROR: Helm AQL URL: {aql_url}", file=sys.stderr)
-            print(f"ERROR: Helm Repo: {repo_key}", file=sys.stderr)
-            print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
-            sys.exit(1)
+            # For new repositories that don't exist yet, this is expected - fall back to seed
+            error_str = str(e)
+            if "400" in error_str or "404" in error_str or "not found" in error_str.lower():
+                print(f"INFO: Helm repository {repo_key} not found - this is expected for new packages", file=sys.stderr)
+                print(f"INFO: Will fall back to seed version for {package_name}", file=sys.stderr)
+                # Don't exit - let it fall through to seed fallback
+            else:
+                # FAIL FAST: Don't mask real authentication or connectivity issues
+                print(f"ERROR: Helm repository query failed for {package_name}: {e}", file=sys.stderr)
+                print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
+                print(f"ERROR: Helm AQL URL: {aql_url}", file=sys.stderr)
+                print(f"ERROR: Helm Repo: {repo_key}", file=sys.stderr)
+                print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
+                sys.exit(1)
     
     # If we found existing versions, bump the latest one
     if existing_versions:
