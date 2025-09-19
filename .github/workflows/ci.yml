@@ -238,6 +238,18 @@ jobs:
           echo "COVERAGE_PERCENT=$COVERAGE_PERCENT" >> $GITHUB_ENV
           echo "✅ Tests passed with $COVERAGE_PERCENT% coverage"
 
+      - name: "[Auth] OIDC Token Exchange (bookverse-devops shared script)"
+        id: exchange-oidc
+        run: |
+          echo "🔐 Using bookverse-devops shared OIDC exchange script"
+          ../bookverse-devops/scripts/exchange-oidc-token.sh \
+            --service-name "infra" \
+            --provider-name "bookverse-infra-github" \
+            --jfrog-url "${{ vars.JFROG_URL }}" \
+            --docker-registry "${{ vars.DOCKER_REGISTRY }}" \
+            --verbose
+          echo "✅ OIDC token exchange completed using shared bookverse-devops script"
+
       - name: "[Setup] Determine SemVer"
         id: determine-semver
         run: |
@@ -523,6 +535,18 @@ jobs:
           
           print('✅ All YAML files validated')
           "
+
+      - name: "[Auth] OIDC Token Exchange (bookverse-devops shared script)"
+        id: exchange-oidc
+        run: |
+          echo "🔐 Using bookverse-devops shared OIDC exchange script"
+          scripts/exchange-oidc-token.sh \
+            --service-name "infra" \
+            --provider-name "bookverse-infra-github" \
+            --jfrog-url "${{ vars.JFROG_URL }}" \
+            --docker-registry "${{ vars.DOCKER_REGISTRY }}" \
+            --verbose
+          echo "✅ OIDC token exchange completed using shared bookverse-devops script"
 
       - name: "[Setup] Determine SemVer"
         id: determine-semver
