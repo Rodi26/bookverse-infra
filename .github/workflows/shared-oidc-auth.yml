@@ -1,8 +1,5 @@
 name: "BookVerse Shared OIDC Authentication"
 
-# Simplified reusable workflow for OIDC authentication
-# Uses JFrog CLI action which handles OIDC token exchange internally
-
 on:
   workflow_call:
     inputs:
@@ -67,7 +64,6 @@ jobs:
           echo "🔑 OIDC Provider: ${{ inputs.oidc-provider-name }}"
           echo "👥 OIDC Audience: ${{ inputs.oidc-audience }}"
           
-          # Test JFrog connectivity
           if jf rt ping; then
             echo "✅ JFrog authentication successful"
             echo "auth_success=true" >> $GITHUB_OUTPUT
