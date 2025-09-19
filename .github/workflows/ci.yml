@@ -628,6 +628,39 @@ jobs:
           
           echo "✅ Packaged bookverse-devops v$PACKAGE_VERSION"
 
+      - name: "[Debug] Repository Access Test"
+        run: |
+          set -euo pipefail
+          
+          echo "🔍 DEBUG: Testing repository access before upload"
+          GENERIC_REPO="${{ vars.PROJECT_KEY }}-infra-internal-generic-nonprod-local"
+          
+          echo "🔗 Target repository: $GENERIC_REPO"
+          echo "📦 Artifact: bookverse-devops-${PACKAGE_VERSION}.tar.gz"
+          
+          # Test 1: Check if repository exists
+          echo "📋 Test 1: Repository existence check"
+          jf rt ping --url="${{ vars.JFROG_URL }}/artifactory/$GENERIC_REPO" || echo "❌ Repository ping failed"
+          
+          # Test 2: List repository contents (if any)
+          echo "📋 Test 2: Repository contents"
+          jf rt search "$GENERIC_REPO/*" --project "${{ vars.PROJECT_KEY }}" || echo "ℹ️ Repository empty or not accessible"
+          
+          # Test 3: Check specific path where we're trying to upload
+          echo "📋 Test 3: Check target path"
+          TARGET_PATH="$GENERIC_REPO/devops/$PACKAGE_VERSION/"
+          jf rt search "$TARGET_PATH*" --project "${{ vars.PROJECT_KEY }}" || echo "ℹ️ Target path doesn't exist (expected for new version)"
+          
+          # Test 4: Try to get repository information
+          echo "📋 Test 4: Repository info"
+          curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+               "${{ vars.JFROG_URL }}/artifactory/api/repositories/$GENERIC_REPO" | jq '.' || echo "❌ Repository info failed"
+          
+          # Test 5: List all repositories to see what exists
+          echo "📋 Test 5: List all repositories containing 'infra'"
+          curl -s -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+               "${{ vars.JFROG_URL }}/artifactory/api/repositories" | jq '.[] | select(.key | contains("infra"))' || echo "❌ Repository list failed"
+
       - name: "[Artifacts] Upload to JFrog"
         run: |
           set -euo pipefail
