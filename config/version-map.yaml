@@ -10,7 +10,7 @@ applications:
       # Packages from bookverse-core build (Python library)
       - type: python
         name: bookverse-core  
-        seed: 0.1.7  # Random seed for core library
+        seed: 2.1.7  # Random seed for core library
       
       # Packages from bookverse-devops build (DevOps tooling) - TEMP: using python type for testing
       - type: python
