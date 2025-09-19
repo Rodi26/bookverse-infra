@@ -283,7 +283,8 @@ jobs:
           jf rt bce --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"
           if BUILD_PUBLISH_RESULT=$(jf rt bp --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"); then
             echo "BUILD_INFO_PUBLISH_STATUS=SUCCESS" >> $GITHUB_ENV
-            BUILD_UI_URL=$(echo "$BUILD_PUBLISH_RESULT" | grep -o 'https://[^[:space:]]*builds/[^[:space:]]*' | head -1 || echo "")
+            # More specific URL extraction for bookverse-core build  
+            BUILD_UI_URL=$(echo "$BUILD_PUBLISH_RESULT" | grep -o "https://[^[:space:]]*builds/bookverse-core_CI_build-bookverse-core/[^[:space:]]*" | head -1 || echo "")
             
             if [[ -n "$BUILD_UI_URL" ]]; then
               EPOCH_MS=$(echo "$BUILD_UI_URL" | sed -n 's|.*/builds/[^/]*/[^/]*/\([0-9]*\)/published.*|\1|p')
@@ -486,7 +487,8 @@ jobs:
           jf rt bce --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"
           if BUILD_PUBLISH_RESULT=$(jf rt bp --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"); then
             echo "BUILD_INFO_PUBLISH_STATUS=SUCCESS" >> $GITHUB_ENV
-            BUILD_UI_URL=$(echo "$BUILD_PUBLISH_RESULT" | grep -o 'https://[^[:space:]]*builds/[^[:space:]]*' | head -1 || echo "")
+            # More specific URL extraction for bookverse-devops build
+            BUILD_UI_URL=$(echo "$BUILD_PUBLISH_RESULT" | grep -o "https://[^[:space:]]*builds/bookverse-devops_CI_build-bookverse-devops/[^[:space:]]*" | head -1 || echo "")
             
             if [[ -n "$BUILD_UI_URL" ]]; then
               EPOCH_MS=$(echo "$BUILD_UI_URL" | sed -n 's|.*/builds/[^/]*/[^/]*/\([0-9]*\)/published.*|\1|p')
