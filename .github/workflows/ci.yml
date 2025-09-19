@@ -468,12 +468,18 @@ jobs:
         run: |
           set -euo pipefail
           
-          echo "ℹ️  DevOps artifact upload temporarily disabled - repository not available"
-          echo "📦 Artifacts created locally:"
-          ls -la bookverse-devops-${PACKAGE_VERSION}.tar.gz version-manifest.json
+          echo "📦 Uploading DevOps artifacts to JFrog"
           
+          # Upload DevOps package and manifest to generic repository
+          GENERIC_REPO="${{ vars.PROJECT_KEY }}-generic-local"
+          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "$GENERIC_REPO/devops/$PACKAGE_VERSION/bookverse-devops-${PACKAGE_VERSION}.tar.gz" \
+            --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
           
-          echo "✅ DevOps artifacts prepared (upload disabled)"
+          jf rt upload "version-manifest.json" "$GENERIC_REPO/devops/$PACKAGE_VERSION/version-manifest.json" \
+            --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
+          
+          echo "✅ DevOps artifacts uploaded to JFrog"
+          echo "📦 Uploaded: bookverse-devops-${PACKAGE_VERSION}.tar.gz, version-manifest.json"
 
       - name: "[Build] Publish Build Info"
         run: |
@@ -619,20 +625,52 @@ jobs:
           pip install --user PyYAML setuptools wheel
           echo "✅ Python dependencies installed"
 
-      - name: "[Setup] Generate Application Version"
+      - name: "[Setup] Determine SemVer (Dual-Build Adaptation)"
         id: generate-version
         run: |
-          APP_VERSION=$(python -c "
-          import requests
-          import json
-          from datetime import datetime
+          set -euo pipefail
           
-          timestamp = datetime.now().strftime('%Y.%m.%d.%H%M')
-          version = f'1.0.{timestamp}'
-          print(version)
-          ")
+          if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
+            echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
+            exit 1
+          fi
+          echo "✅ Using OIDC token for semver determination"
           
-          echo "🏷️ Generated Application Version: $APP_VERSION"
+          # Use shared semver scripts adapted for dual-build aggregation
+          APPLICATION_KEY="${{ vars.APPLICATION_KEY }}"
+          echo "📋 Using shared semver logic from bookverse-infra for dual-build aggregation"
+          
+          INFRA_SCRIPTS_PATH="bookverse-infra/libraries/bookverse-devops/scripts"
+          if [[ -f "$INFRA_SCRIPTS_PATH/determine-semver.sh" ]]; then
+            cp "$INFRA_SCRIPTS_PATH/determine-semver.sh" .
+            cp "$INFRA_SCRIPTS_PATH/semver_versioning.py" .
+            chmod +x determine-semver.sh
+            echo "✅ Using shared semver scripts from bookverse-infra"
+          else
+            echo "❌ Shared semver scripts not found in bookverse-infra at $INFRA_SCRIPTS_PATH" >&2
+            exit 1
+          fi
+          
+          echo "🔍 Calculating version for dual-build application using shared logic..."
+          SEMVER_OUTPUT=$(./determine-semver.sh \
+            --application-key "$APPLICATION_KEY" \
+            --version-map "./config/version-map.yaml" \
+            --jfrog-url "${{ vars.JFROG_URL }}" \
+            --jfrog-token "$JF_OIDC_TOKEN" \
+            --project-key "${{ vars.PROJECT_KEY }}" \
+            --packages "bookverse-core,bookverse-devops" \
+            --verbose)
+          
+          JSON_LINE=$(echo "$SEMVER_OUTPUT" | grep '{"application_key"')
+          APP_VERSION=$(echo "$JSON_LINE" | jq -r '.app_version')
+          
+          if [[ -z "$APP_VERSION" || "$APP_VERSION" == "null" ]]; then
+            echo "❌ Failed to extract APP_VERSION from semver output" >&2
+            echo "📋 Semver output: $SEMVER_OUTPUT" >&2
+            exit 1
+          fi
+          
+          echo "🏷️ Generated Application Version (dual-build): $APP_VERSION"
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
           echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
 
