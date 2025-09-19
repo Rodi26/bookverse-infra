@@ -252,6 +252,11 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             resp = http_post(aql_url, aql_headers, aql_query)
             print(f"DEBUG: Helm AQL query: {aql_query}", file=sys.stderr)
             print(f"DEBUG: Helm AQL response: {resp}", file=sys.stderr)
+            
+            # Debug: Also try to see what files exist in the repo at all
+            debug_query = f'''items.find({{"repo":"{repo_key}","type":"file"}}).include("name","path").limit(10)'''
+            debug_resp = http_post(aql_url, aql_headers, debug_query)
+            print(f"DEBUG: All files in helm repo (first 10): {debug_resp}", file=sys.stderr)
             if isinstance(resp, dict) and "results" in resp:
                 print(f"DEBUG: Found {len(resp.get('results', []))} Helm charts in repository", file=sys.stderr)
                 # Extract version numbers from chart names
