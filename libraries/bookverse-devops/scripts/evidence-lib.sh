@@ -62,7 +62,7 @@ evd_create() {
       # Docker images go to docker repository  
       package_repo_name="${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local"
     fi
-    jf evd create-evidence \
+    if ! jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
       --predicate-type "$predicate_type" \
@@ -72,7 +72,11 @@ evd_create() {
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
-      --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
+      --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}"; then
+      echo "❌ Failed to attach evidence to package ${PACKAGE_NAME}:${PACKAGE_VERSION} in $package_repo_name" >&2
+      echo "🔍 Check EVIDENCE_PRIVATE_KEY and EVIDENCE_KEY_ALIAS configuration" >&2
+      return 1
+    fi
   elif [[ "${ATTACH_TO_BUILD:-}" == "true" ]]; then
     # Mode 2: Attach to build info
     # CRITICAL: Do NOT add --url parameter - JFrog CLI is already configured
@@ -81,7 +85,7 @@ evd_create() {
       url_args+=(--url "${JFROG_URL:-${JF_URL:-}}")
     fi
     
-    jf evd create-evidence \
+    if ! jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
       --predicate-type "$predicate_type" \
@@ -90,12 +94,16 @@ evd_create() {
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
-      --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
+      --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}"; then
+      echo "❌ Failed to attach evidence to build ${BUILD_NAME}:${BUILD_NUMBER}" >&2
+      echo "🔍 Check EVIDENCE_PRIVATE_KEY and EVIDENCE_KEY_ALIAS configuration" >&2
+      return 1
+    fi
   else
     # Mode 3: Attach to release bundle (for application evidence)
     # CRITICAL: Do NOT add --url parameter - JFrog CLI is already configured
     
-    jf evd create-evidence \
+    if ! jf evd create-evidence \
       --predicate "$predicate_file" \
       "${md_args[@]}" \
       --predicate-type "$predicate_type" \
@@ -104,7 +112,11 @@ evd_create() {
       --project "${PROJECT_KEY}" \
       --provider-id github-actions \
       --key "${EVIDENCE_PRIVATE_KEY:-}" \
-      --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}" || true
+      --key-alias "${EVIDENCE_KEY_ALIAS:-${EVIDENCE_KEY_ALIAS_VAR:-}}"; then
+      echo "❌ Failed to attach evidence to release bundle ${APPLICATION_KEY}:${APP_VERSION}" >&2
+      echo "🔍 Check EVIDENCE_PRIVATE_KEY and EVIDENCE_KEY_ALIAS configuration" >&2
+      return 1
+    fi
   fi
 }
 
