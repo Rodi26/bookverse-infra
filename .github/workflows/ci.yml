@@ -358,8 +358,8 @@ jobs:
         run: |
           set -euo pipefail
           
-          jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-pypi-cache-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
-          jf rt upload "dist/*.tar.gz" "${{ vars.PROJECT_KEY }}-pypi-cache-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
+          jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-pypi-cache-local" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
+          jf rt upload "dist/*.tar.gz" "${{ vars.PROJECT_KEY }}-pypi-cache-local" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --project "${{ vars.PROJECT_KEY }}"
           
           echo "ℹ️  Coverage upload temporarily disabled - repository not available"
           
