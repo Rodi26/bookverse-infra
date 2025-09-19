@@ -296,7 +296,7 @@ jobs:
           echo "📋 Using shared evidence library for bookverse-core build"
           
           # Source the shared evidence library
-          source libraries/bookverse-devops/scripts/evidence-lib.sh
+          source ../bookverse-devops/scripts/evidence-lib.sh
           
           # Set environment variables for evidence library
           export SERVICE_NAME="core"
