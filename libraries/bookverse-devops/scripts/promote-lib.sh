@@ -315,11 +315,53 @@ release_version() {
     # Derive service name from application key: bookverse-<service>
     local service_name
     service_name="${APPLICATION_KEY#${PROJECT_KEY}-}"
-    local repo_docker repo_python
-    # Use exact internal release repositories for final PROD release
-    repo_docker="${PROJECT_KEY}-${service_name}-internal-docker-release-local"
-    repo_python="${PROJECT_KEY}-${service_name}-internal-python-release-local"
-    payload=$(printf '{"promotion_type":"move","included_repository_keys":["%s","%s"]}' "$repo_docker" "$repo_python")
+    
+    # Build repository list based on service type
+    local release_repos=()
+    case "$service_name" in
+      helm)
+        # Helm service uses helm and generic repositories
+        release_repos+=(
+          "${PROJECT_KEY}-${service_name}-internal-helm-release-local"
+          "${PROJECT_KEY}-${service_name}-internal-generic-release-local"
+        )
+        ;;
+      web)
+        # Web service uses npm, docker and generic repositories
+        release_repos+=(
+          "${PROJECT_KEY}-${service_name}-internal-npm-release-local"
+          "${PROJECT_KEY}-${service_name}-internal-docker-release-local"
+          "${PROJECT_KEY}-${service_name}-internal-generic-release-local"
+        )
+        ;;
+      platform)
+        # Platform service uses docker, python and generic repositories (public visibility)
+        release_repos+=(
+          "${PROJECT_KEY}-${service_name}-public-docker-release-local"
+          "${PROJECT_KEY}-${service_name}-public-python-release-local"
+          "${PROJECT_KEY}-${service_name}-public-generic-release-local"
+        )
+        ;;
+      *)
+        # Other services (inventory, recommendations, checkout) use docker, python and generic
+        release_repos+=(
+          "${PROJECT_KEY}-${service_name}-internal-docker-release-local"
+          "${PROJECT_KEY}-${service_name}-internal-python-release-local"
+          "${PROJECT_KEY}-${service_name}-internal-generic-release-local"
+        )
+        ;;
+    esac
+    
+    # Build JSON array for payload
+    local repos_json=""
+    for repo in "${release_repos[@]}"; do
+      if [[ -n "$repos_json" ]]; then
+        repos_json="${repos_json},\"${repo}\""
+      else
+        repos_json="\"${repo}\""
+      fi
+    done
+    payload=$(printf '{"promotion_type":"move","included_repository_keys":[%s]}' "$repos_json")
   fi
   if apptrust_post \
     "/apptrust/api/v1/applications/${APPLICATION_KEY}/versions/${APP_VERSION}/release?async=false" \
@@ -328,7 +370,10 @@ release_version() {
     echo "HTTP OK"; cat "$resp_body" || true; echo
   else
     echo "❌ Release to ${FINAL_STAGE} failed" >&2
-    print_request_info "POST" "${JFROG_URL}/apptrust/api/v1/applications/${APPLICATION_KEY}/versions/${APP_VERSION}/release?async=false" "{\"promotion_type\":\"move\"}"
+    print_request_info "POST" "${JFROG_URL}/apptrust/api/v1/applications/${APPLICATION_KEY}/versions/${APP_VERSION}/release?async=false" "$payload"
+    echo "❌ Response Body:"
+    cat "$resp_body" || echo "(no response body available)"
+    echo ""
     rm -f "$resp_body"
     return 1
   fi
