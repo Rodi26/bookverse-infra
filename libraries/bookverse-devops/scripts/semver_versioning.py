@@ -290,6 +290,64 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                 print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
                 sys.exit(1)
     
+    elif package_type == "python" or package_type == "pypi":
+        # For Python packages, query PyPI repository
+        try:
+            # Extract service name from app_key (bookverse-infra -> infra, bookverse-core -> core)
+            service_name = app_key.replace("bookverse-", "")
+            # PyPI repo pattern: bookverse-{service}-internal-pypi-nonprod-local or bookverse-{service}-internal-python-nonprod-local
+            pypi_repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-pypi-nonprod-local"
+            python_repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-python-nonprod-local"
+            
+            # Try both repository naming patterns
+            for repo_key in [pypi_repo_key, python_repo_key]:
+                print(f"DEBUG: Trying Python repository: {repo_key}", file=sys.stderr)
+                
+                # AQL query to find Python wheels and source distributions
+                # Note: AQL wildcards use $match instead of shell-style *
+                aql_query = f'''items.find({{"repo":"{repo_key}","type":"file","name":{{"$match":"*.whl"}}}}).include("name","path")'''
+                aql_url = f"{jfrog_url.rstrip('/')}/artifactory/api/search/aql"
+                aql_headers = headers.copy()
+                aql_headers["Content-Type"] = "text/plain"
+                
+                resp = http_post(aql_url, aql_headers, aql_query)
+                print(f"DEBUG: Python AQL query: {aql_query}", file=sys.stderr)
+                print(f"DEBUG: Python AQL response: {resp}", file=sys.stderr)
+                
+                if isinstance(resp, dict) and "results" in resp and len(resp.get("results", [])) > 0:
+                    print(f"DEBUG: Found {len(resp.get('results', []))} Python packages in repository {repo_key}", file=sys.stderr)
+                    # Extract version numbers from wheel names
+                    for item in resp.get("results", []):
+                        name = item.get("name", "")
+                        
+                        # Python wheel naming: {package-name}-{version}-{python-tag}-{abi-tag}-{platform-tag}.whl
+                        # Extract version from filename like "bookverse_core-2.1.8-py3-none-any.whl"
+                        import re
+                        version_pattern = r'-(\d+\.\d+\.\d+)-'
+                        match = re.search(version_pattern, name)
+                        if match:
+                            version = match.group(1)
+                            if parse_semver(version):
+                                print(f"DEBUG: Found existing Python version {version} in package: {name}", file=sys.stderr)
+                                existing_versions.append(version)
+                    break  # Found packages in this repo, stop trying other repos
+                else:
+                    print(f"DEBUG: No Python packages found in {repo_key}", file=sys.stderr)
+                    
+        except Exception as e:
+            # For new repositories that don't exist yet, this is expected - fall back to seed
+            error_str = str(e)
+            if "400" in error_str or "404" in error_str or "not found" in error_str.lower():
+                print(f"INFO: Python repository not found - this is expected for new packages", file=sys.stderr)
+                print(f"INFO: Will fall back to seed version for {package_name}", file=sys.stderr)
+                # Don't exit - let it fall through to seed fallback
+            else:
+                # FAIL FAST: Don't mask real authentication or connectivity issues
+                print(f"ERROR: Python repository query failed for {package_name}: {e}", file=sys.stderr)
+                print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
+                print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
+                sys.exit(1)
+    
     # If we found existing versions, bump the latest one
     if existing_versions:
         latest = max_semver(existing_versions)

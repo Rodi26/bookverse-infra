@@ -342,6 +342,13 @@ release_version() {
           "${PROJECT_KEY}-${service_name}-public-generic-release-local"
         )
         ;;
+      infra)
+        # Infra service uses pypi and generic repositories
+        release_repos+=(
+          "${PROJECT_KEY}-${service_name}-internal-pypi-release-local"
+          "${PROJECT_KEY}-${service_name}-internal-generic-release-local"
+        )
+        ;;
       *)
         # Other services (inventory, recommendations, checkout) use docker, python and generic
         release_repos+=(
