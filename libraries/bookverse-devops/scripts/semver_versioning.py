@@ -235,18 +235,58 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
             sys.exit(1)
     
+    elif package_type == "helm":
+        # For Helm packages, query Helm repository
+        try:
+            # Extract service name from app_key (bookverse-helm -> helm)
+            service_name = app_key.replace("bookverse-", "")
+            # Helm repo pattern: bookverse-{service}-internal-helm-nonprod-local
+            repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-helm-nonprod-local"
+            
+            # AQL query to find Helm charts in the repository
+            aql_query = f'''items.find({{"repo":"{repo_key}","type":"file","name":"*.tgz"}}).include("name","path")'''
+            aql_url = f"{jfrog_url.rstrip('/')}/artifactory/api/search/aql"
+            aql_headers = headers.copy()
+            aql_headers["Content-Type"] = "text/plain"
+            
+            resp = http_post(aql_url, aql_headers, aql_query)
+            print(f"DEBUG: Helm AQL query: {aql_query}", file=sys.stderr)
+            print(f"DEBUG: Helm AQL response: {resp}", file=sys.stderr)
+            if isinstance(resp, dict) and "results" in resp:
+                print(f"DEBUG: Found {len(resp.get('results', []))} Helm charts in repository", file=sys.stderr)
+                # Extract version numbers from chart names
+                for item in resp.get("results", []):
+                    name = item.get("name", "")
+                    
+                    # Helm chart naming: {chart-name}-{version}.tgz
+                    # Extract version from filename like "platform-1.2.3.tgz"
+                    import re
+                    version_pattern = r'-(\d+\.\d+\.\d+)\.tgz$'
+                    match = re.search(version_pattern, name)
+                    if match:
+                        version = match.group(1)
+                        if parse_semver(version):
+                            print(f"DEBUG: Found existing Helm version {version} in chart: {name}", file=sys.stderr)
+                            existing_versions.append(version)
+        except Exception as e:
+            # FAIL FAST: Don't mask authentication or connectivity issues
+            print(f"ERROR: Helm repository query failed for {package_name}: {e}", file=sys.stderr)
+            print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
+            print(f"ERROR: Helm AQL URL: {aql_url}", file=sys.stderr)
+            print(f"ERROR: Helm Repo: {repo_key}", file=sys.stderr)
+            print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
+            sys.exit(1)
+    
     # If we found existing versions, bump the latest one
     if existing_versions:
         latest = max_semver(existing_versions)
         if latest:
             return bump_patch(latest)
     
-    # CRITICAL: If no existing versions found, this may indicate authentication failure
-    print(f"ERROR: No existing versions found for {package_name} in {package_type} repository", file=sys.stderr)
-    print(f"ERROR: This may indicate authentication or repository access issues", file=sys.stderr)
-    print(f"ERROR: If this is a new package, manually verify repository access and auth", file=sys.stderr)
-    print(f"ERROR: For existing packages, this suggests auth failure - check JFROG_ACCESS_TOKEN", file=sys.stderr)
-    sys.exit(1)
+    # Fallback to seed - same pattern as application versioning
+    print(f"INFO: No existing versions found for {package_name}, falling back to seed version", file=sys.stderr)
+    # Always bump the seed to prevent conflicts with promoted artifacts
+    return bump_patch(str(seed))
 
 
 def main():
