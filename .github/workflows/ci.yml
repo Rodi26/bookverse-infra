@@ -19,7 +19,7 @@ on:
       force_app_version:
         description: 'Force application version creation (override commit filter)'
         required: false
-        default: false
+        default: true
         type: boolean
 
 jobs:
@@ -59,6 +59,8 @@ jobs:
           
       - name: "[Demo] Commit Analysis (Optimized for Visibility)"
         id: demo-filter
+        env:
+          GITHUB_EVENT_INPUTS_FORCE_APP_VERSION: ${{ inputs.force_app_version }}
         run: |
           
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ inputs.force_app_version }}" == "true" ]]; then
@@ -109,7 +111,6 @@ jobs:
   authenticate:
     name: "Shared OIDC Authentication"
     needs: analyze-commit
-    if: needs.analyze-commit.outputs.core_changed == 'true' || needs.analyze-commit.outputs.devops_changed == 'true' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       id-token: write
@@ -121,9 +122,8 @@ jobs:
       oidc-audience: ${{ vars.JFROG_URL }}
 
   build-bookverse-core:
-    name: "Build: bookverse-core"
+    name: "Build: bookverse-core (Always Runs)"
     needs: [analyze-commit, authenticate]
-    if: needs.analyze-commit.outputs.core_changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -316,9 +316,8 @@ jobs:
           echo "✅ Evidence attached to build using shared library"
 
   build-bookverse-devops:
-    name: "Build: bookverse-devops"
+    name: "Build: bookverse-devops (Always Runs)"
     needs: [analyze-commit, authenticate]
-    if: needs.analyze-commit.outputs.devops_changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
