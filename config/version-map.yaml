@@ -1,54 +1,18 @@
-# BookVerse Infrastructure Version Configuration
-# Defines versioning strategy for infrastructure libraries
+# BookVerse Infrastructure Version Configuration  
+# Dual-Build Aggregation Pattern: Multiple builds → Single application
+# Supports: bookverse-core (Python) + bookverse-devops (Generic) → bookverse-infra app
 
 applications:
-  - key: "bookverse-infra"
-    name: "BookVerse Infrastructure"
-    description: "Consolidated infrastructure libraries and DevOps tooling"
-    type: "infrastructure"
+  - key: bookverse-infra
     seeds:
-      application: "1.0.0"
-    libraries:
-      - name: "bookverse-core"
-        type: "python-library"
-        description: "Python commons library for BookVerse services"
-        seeds:
-          package: "0.1.0"
-        components:
-          - "authentication"
-          - "configuration"
-          - "api-utilities"
-          - "database-helpers"
-      - name: "bookverse-devops"
-        type: "devops-tooling"
-        description: "CI/CD workflows, scripts, and evidence templates"
-        seeds:
-          package: "1.0.0"
-        components:
-          - "github-workflows"
-          - "semver-scripts"
-          - "evidence-templates"
-          - "shared-tooling"
-
-versioning:
-  strategy: "semantic"
-  auto_increment: true
-  release_branches:
-    - "main"
-  
-stages:
-  - name: "DEV"
-    auto_promote: true
-  - name: "bookverse-QA"
-    auto_promote: false
-    approval_required: false  # Demo mode
-  - name: "PROD"
-    auto_promote: false
-    approval_required: false  # Demo mode
-
-promotion:
-  criteria:
-    - "all_tests_passed"
-    - "coverage_threshold_met"
-    - "security_scan_passed"
-    - "evidence_collected"
+      application: 1.0.3  # Random seed for infrastructure application
+    packages:
+      # Packages from bookverse-core build (Python library)
+      - type: python
+        name: bookverse-core  
+        seed: 0.1.7  # Random seed for core library
+      
+      # Packages from bookverse-devops build (DevOps tooling)
+      - type: generic
+        name: bookverse-devops
+        seed: 1.0.9  # Random seed for devops package
