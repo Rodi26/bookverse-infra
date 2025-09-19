@@ -617,7 +617,7 @@ jobs:
           echo "✅ Using JF_OIDC_TOKEN for AppTrust API authentication"
           
           BASE="${{ vars.JFROG_URL }}/apptrust/api/v1"
-          APP_KEY="$APPLICATION_KEY"
+          APP_KEY="${{ vars.APPLICATION_KEY }}"
           APP_VERSION="${{ env.APP_VERSION }}"
           
           TAG_OPTIONS=(release hotfix feature bugfix enhancement security performance refactor)
