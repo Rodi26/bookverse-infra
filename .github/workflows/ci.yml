@@ -287,6 +287,9 @@ jobs:
           fi
 
       - name: "[Evidence] Attach build evidence using shared library"
+        env:
+          EVIDENCE_PRIVATE_KEY: ${{ secrets.EVIDENCE_PRIVATE_KEY }}
+          EVIDENCE_KEY_ALIAS: ${{ vars.EVIDENCE_KEY_ALIAS }}
         run: |
           set -euo pipefail
           
@@ -488,6 +491,9 @@ jobs:
           fi
 
       - name: "[Evidence] Attach build evidence using shared library"
+        env:
+          EVIDENCE_PRIVATE_KEY: ${{ secrets.EVIDENCE_PRIVATE_KEY }}
+          EVIDENCE_KEY_ALIAS: ${{ vars.EVIDENCE_KEY_ALIAS }}
         run: |
           set -euo pipefail
           
