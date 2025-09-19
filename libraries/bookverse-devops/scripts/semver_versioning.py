@@ -206,10 +206,7 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             aql_headers["Content-Type"] = "text/plain"
             
             resp = http_post(aql_url, aql_headers, aql_query)
-            print(f"DEBUG: AQL query: {aql_query}", file=sys.stderr)
-            print(f"DEBUG: AQL response: {resp}", file=sys.stderr)
             if isinstance(resp, dict) and "results" in resp:
-                print(f"DEBUG: Found {len(resp.get('results', []))} items in repository", file=sys.stderr)
                 # Extract version numbers from paths/names
                 for item in resp.get("results", []):
                     path = item.get("path", "")
@@ -224,7 +221,6 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                     if match:
                         version = match.group(1)
                         if parse_semver(version):
-                            print(f"DEBUG: Found existing version {version} in path: {path}", file=sys.stderr)
                             existing_versions.append(version)
         except Exception as e:
             # FAIL FAST: Don't mask authentication or connectivity issues
@@ -251,15 +247,7 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             aql_headers["Content-Type"] = "text/plain"
             
             resp = http_post(aql_url, aql_headers, aql_query)
-            print(f"DEBUG: Helm AQL query: {aql_query}", file=sys.stderr)
-            print(f"DEBUG: Helm AQL response: {resp}", file=sys.stderr)
-            
-            # Debug: Also try to see what files exist in the repo at all
-            debug_query = f'''items.find({{"repo":"{repo_key}","type":"file"}}).include("name","path").limit(10)'''
-            debug_resp = http_post(aql_url, aql_headers, debug_query)
-            print(f"DEBUG: All files in helm repo (first 10): {debug_resp}", file=sys.stderr)
             if isinstance(resp, dict) and "results" in resp:
-                print(f"DEBUG: Found {len(resp.get('results', []))} Helm charts in repository", file=sys.stderr)
                 # Extract version numbers from chart names
                 for item in resp.get("results", []):
                     name = item.get("name", "")
@@ -272,15 +260,13 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                     if match:
                         version = match.group(1)
                         if parse_semver(version):
-                            print(f"DEBUG: Found existing Helm version {version} in chart: {name}", file=sys.stderr)
                             existing_versions.append(version)
         except Exception as e:
             # For new repositories that don't exist yet, this is expected - fall back to seed
             error_str = str(e)
             if "400" in error_str or "404" in error_str or "not found" in error_str.lower():
-                print(f"INFO: Helm repository {repo_key} not found - this is expected for new packages", file=sys.stderr)
-                print(f"INFO: Will fall back to seed version for {package_name}", file=sys.stderr)
-                # Don't exit - let it fall through to seed fallback
+                # Repository not found - this is expected for new packages, fall back to seed
+                pass
             else:
                 # FAIL FAST: Don't mask real authentication or connectivity issues
                 print(f"ERROR: Helm repository query failed for {package_name}: {e}", file=sys.stderr)
@@ -301,7 +287,6 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             
             # Try both repository naming patterns
             for repo_key in [pypi_repo_key, python_repo_key]:
-                print(f"DEBUG: Trying Python repository: {repo_key}", file=sys.stderr)
                 
                 # AQL query to find Python wheels and source distributions
                 # Note: AQL wildcards use $match instead of shell-style *
@@ -311,11 +296,8 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                 aql_headers["Content-Type"] = "text/plain"
                 
                 resp = http_post(aql_url, aql_headers, aql_query)
-                print(f"DEBUG: Python AQL query: {aql_query}", file=sys.stderr)
-                print(f"DEBUG: Python AQL response: {resp}", file=sys.stderr)
                 
                 if isinstance(resp, dict) and "results" in resp and len(resp.get("results", [])) > 0:
-                    print(f"DEBUG: Found {len(resp.get('results', []))} Python packages in repository {repo_key}", file=sys.stderr)
                     # Extract version numbers from wheel names
                     for item in resp.get("results", []):
                         name = item.get("name", "")
@@ -328,19 +310,15 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                         if match:
                             version = match.group(1)
                             if parse_semver(version):
-                                print(f"DEBUG: Found existing Python version {version} in package: {name}", file=sys.stderr)
                                 existing_versions.append(version)
                     break  # Found packages in this repo, stop trying other repos
-                else:
-                    print(f"DEBUG: No Python packages found in {repo_key}", file=sys.stderr)
                     
         except Exception as e:
             # For new repositories that don't exist yet, this is expected - fall back to seed
             error_str = str(e)
             if "400" in error_str or "404" in error_str or "not found" in error_str.lower():
-                print(f"INFO: Python repository not found - this is expected for new packages", file=sys.stderr)
-                print(f"INFO: Will fall back to seed version for {package_name}", file=sys.stderr)
-                # Don't exit - let it fall through to seed fallback
+                # Repository not found - this is expected for new packages, fall back to seed
+                pass
             else:
                 # FAIL FAST: Don't mask real authentication or connectivity issues
                 print(f"ERROR: Python repository query failed for {package_name}: {e}", file=sys.stderr)
@@ -355,7 +333,6 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             return bump_patch(latest)
     
     # Fallback to seed - same pattern as application versioning
-    print(f"INFO: No existing versions found for {package_name}, falling back to seed version", file=sys.stderr)
     # Always bump the seed to prevent conflicts with promoted artifacts
     return bump_patch(str(seed))
 
