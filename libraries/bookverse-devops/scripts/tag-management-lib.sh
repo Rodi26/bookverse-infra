@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# BookVerse Tag Management Library - MINIMAL VERSION
-# STEP 1: Complete no-op to establish baseline
+# BookVerse Self-Healing Tag Management Library
+# Comprehensive tag management system for AppTrust applications
 
 set -euo pipefail
 
@@ -94,29 +94,17 @@ add_tag() {
     local payload=$(jq -n --arg tag "$tag" '{tag: $tag}')
     local url="${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions/$version"
     
-    # Debug: Log the API call details
-    log_info "🔍 DEBUG: PATCH $url"
-    log_info "🔍 DEBUG: Payload: $payload"
-    
-    local temp_response=$(mktemp)
-    local http_status=$(curl -sS -X PATCH -o "$temp_response" -w "%{http_code}" \
+    local http_status=$(curl -sS -X PATCH -o /dev/null -w "%{http_code}" \
         "$url" \
         -H "Authorization: Bearer $JF_OIDC_TOKEN" \
         -H "Content-Type: application/json" \
         -d "$payload")
         
-    log_info "🔍 DEBUG: HTTP Status: $http_status"
-    if [[ -s "$temp_response" ]]; then
-        log_info "🔍 DEBUG: Response: $(cat "$temp_response")"
-    fi
-    
     if [[ "$http_status" -ge 200 && "$http_status" -lt 300 ]]; then
         log_success "✅ Added tag '$tag' to version $version"
-        rm -f "$temp_response"
         return 0
     else
         log_error "❌ Failed to add tag '$tag' to version $version (HTTP $http_status)"
-        rm -f "$temp_response"
         return 1
     fi
 }
@@ -149,9 +137,9 @@ remove_tag() {
     fi
 }
 
-# Main function: MINIMAL - just validate environment and exit
+# Main function: Self-healing tag management system
 validate_and_heal_tags() {
-    log_info "🏥 Starting MINIMAL tag validation for $APPLICATION_KEY..."
+    log_info "🏥 Starting self-healing tag management for $APPLICATION_KEY..."
     
     # Validate required environment variables
     if [[ -z "${APPLICATION_KEY:-}" ]]; then
@@ -197,8 +185,8 @@ validate_and_heal_tags() {
         log_info "📋 Recent versions:"
         jq -r '.versions[0:3] | .[] | "  - \(.version) (\(.release_status))"' "$temp_file" 2>/dev/null || log_warning "Could not parse version details"
         
-        # STEP 3: Identify latest candidate
-        log_info "🔍 STEP 3: Identifying latest SemVer candidate..."
+        # Identify latest SemVer candidate
+        log_info "🔍 Identifying latest SemVer candidate..."
         
         local latest_candidate=""
         local prod_versions=$(jq -r '.versions[] | select(.release_status=="RELEASED" or .release_status=="TRUSTED_RELEASE") | .version' "$temp_file" 2>/dev/null || echo "")
@@ -224,11 +212,11 @@ validate_and_heal_tags() {
             if [[ -n "$latest_candidate" ]]; then
                 log_success "🎯 Latest SemVer candidate: $latest_candidate"
                 
-                # STEP 4: Perform actual tag operations
-                log_info "🏷️ STEP 4: Performing tag operations..."
+                # Perform comprehensive tag operations
+                log_info "🏷️ Performing comprehensive tag operations..."
                 
-                # Small delay to ensure version is fully available
-                log_info "⏳ Waiting 3 seconds for version to be fully available..."
+                # Small delay to ensure version is fully available for tagging
+                log_info "⏳ Ensuring version is ready for tag operations..."
                 sleep 3
                 
                 # Check current tags on the latest candidate
@@ -292,7 +280,7 @@ validate_and_heal_tags() {
     
     rm -f "$temp_file"
     
-    log_success "✅ STEP 4 completed - Full tag management with actual operations"
+    log_success "✅ Self-healing tag management completed successfully"
     return 0
 }
 
@@ -317,4 +305,4 @@ enforce_latest_tag() {
 export -f validate_and_heal_tags
 export -f enforce_latest_tag
 
-log_info "📚 BookVerse Tag Management Library (MINIMAL) loaded successfully"
+log_info "📚 BookVerse Self-Healing Tag Management Library loaded successfully"
