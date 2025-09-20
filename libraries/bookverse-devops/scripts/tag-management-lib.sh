@@ -43,14 +43,41 @@ validate_and_heal_tags() {
         return 1
     fi
     
-    # STEP 1: Complete no-op - just log and exit successfully
-    log_success "✅ MINIMAL tag management completed (no operations performed)"
-    log_info "This is intentionally a no-op to establish baseline"
+    # STEP 2: Add simple API call to fetch versions
     log_info "Environment variables validated successfully:"
     log_info "  - APPLICATION_KEY: $APPLICATION_KEY"
     log_info "  - JFROG_URL: $JFROG_URL"
     log_info "  - JF_OIDC_TOKEN: [REDACTED]"
     
+    # Test basic API connectivity
+    local api_url="${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=5&order_by=created&order_asc=false"
+    log_info "🌐 Testing API call: $api_url"
+    
+    local temp_file=$(mktemp)
+    local http_status
+    
+    http_status=$(curl -sS -L -o "$temp_file" -w "%{http_code}" \
+        "$api_url" \
+        -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+        -H "Accept: application/json")
+    
+    log_info "📡 HTTP Status: $http_status"
+    
+    if [[ "$http_status" -ge 200 && "$http_status" -lt 300 ]]; then
+        local version_count=$(jq -r '.versions | length' "$temp_file" 2>/dev/null || echo "0")
+        log_success "✅ API call successful! Found $version_count versions"
+        
+        # Log first few versions for verification
+        log_info "📋 Recent versions:"
+        jq -r '.versions[0:3] | .[] | "  - \(.version) (\(.release_status))"' "$temp_file" 2>/dev/null || log_warning "Could not parse version details"
+    else
+        log_error "❌ API call failed with HTTP $http_status"
+        log_error "Response: $(cat "$temp_file" 2>/dev/null || echo 'No response')"
+    fi
+    
+    rm -f "$temp_file"
+    
+    log_success "✅ STEP 2 completed - API connectivity tested"
     return 0
 }
 
