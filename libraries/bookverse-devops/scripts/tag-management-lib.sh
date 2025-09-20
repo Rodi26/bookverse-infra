@@ -23,6 +23,47 @@ log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
 
+# Helper function: Check if version is valid SemVer
+is_valid_semver() {
+    local version="$1"
+    # Regex for SemVer (major.minor.patch) with optional pre-release and build metadata
+    if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+        return 0  # true
+    else
+        return 1  # false
+    fi
+}
+
+# Helper function: Compare two SemVer versions (returns 0 if v1=v2, 1 if v1>v2, -1 if v1<v2)
+compare_semver() {
+    local v1="$1"
+    local v2="$2"
+    
+    # Remove pre-release and build metadata for comparison
+    local v1_clean=$(echo "$v1" | sed -E 's/(-.*|\+.*)//')
+    local v2_clean=$(echo "$v2" | sed -E 's/(-.*|\+.*)//')
+    
+    if ! is_valid_semver "$v1_clean" || ! is_valid_semver "$v2_clean"; then
+        log_error "Invalid SemVer format for comparison: $v1 or $v2"
+        return 2 # Indicate error
+    fi
+
+    local IFS=.
+    local i vnum1 vnum2
+    read -ra vnum1 <<< "$v1_clean"
+    read -ra vnum2 <<< "$v2_clean"
+
+    for ((i=0; i<${#vnum1[@]}; i++)); do
+        if (( 10#${vnum1[i]} > 10#${vnum2[i]} )); then
+            echo 1; return
+        fi
+        if (( 10#${vnum1[i]} < 10#${vnum2[i]} )); then
+            echo -1; return
+        fi
+    done
+    echo 0; return
+}
+
 # Main function: MINIMAL - just validate environment and exit
 validate_and_heal_tags() {
     log_info "🏥 Starting MINIMAL tag validation for $APPLICATION_KEY..."
@@ -70,6 +111,39 @@ validate_and_heal_tags() {
         # Log first few versions for verification
         log_info "📋 Recent versions:"
         jq -r '.versions[0:3] | .[] | "  - \(.version) (\(.release_status))"' "$temp_file" 2>/dev/null || log_warning "Could not parse version details"
+        
+        # STEP 3: Identify latest candidate
+        log_info "🔍 STEP 3: Identifying latest SemVer candidate..."
+        
+        local latest_candidate=""
+        local prod_versions=$(jq -r '.versions[] | select(.release_status=="RELEASED" or .release_status=="TRUSTED_RELEASE") | .version' "$temp_file" 2>/dev/null || echo "")
+        
+        if [[ -n "$prod_versions" ]]; then
+            log_info "📋 PROD versions found:"
+            for version in $prod_versions; do
+                if is_valid_semver "$version"; then
+                    log_info "  - $version ✅ (valid SemVer)"
+                    if [[ -z "$latest_candidate" ]]; then
+                        latest_candidate="$version"
+                    else
+                        local comparison=$(compare_semver "$version" "$latest_candidate")
+                        if [[ "$comparison" == "1" ]]; then
+                            latest_candidate="$version"
+                        fi
+                    fi
+                else
+                    log_info "  - $version ❌ (not SemVer, ignored)"
+                fi
+            done
+            
+            if [[ -n "$latest_candidate" ]]; then
+                log_success "🎯 Latest SemVer candidate: $latest_candidate"
+            else
+                log_warning "⚠️ No valid SemVer versions found in PROD"
+            fi
+        else
+            log_warning "⚠️ No PROD versions found"
+        fi
     else
         log_error "❌ API call failed with HTTP $http_status"
         log_error "Response: $(cat "$temp_file" 2>/dev/null || echo 'No response')"
@@ -77,7 +151,7 @@ validate_and_heal_tags() {
     
     rm -f "$temp_file"
     
-    log_success "✅ STEP 2 completed - API connectivity tested"
+    log_success "✅ STEP 3 completed - Latest candidate identification tested"
     return 0
 }
 
