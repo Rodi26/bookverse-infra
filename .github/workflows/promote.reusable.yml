@@ -82,8 +82,6 @@ jobs:
           JF_OIDC_TOKEN=$(echo "$RESP" | jq -er '.access_token // empty' || true)
           if [[ -z "$JF_OIDC_TOKEN" ]]; then echo "Failed to obtain JFrog access token: $RESP" >&2; exit 1; fi
           echo "JF_OIDC_TOKEN=$JF_OIDC_TOKEN" >> $GITHUB_ENV
-          # Legacy compatibility: also set APPTRUST_ACCESS_TOKEN during transition
-          echo "APPTRUST_ACCESS_TOKEN=$JF_OIDC_TOKEN" >> $GITHUB_ENV
 
       - name: "[Resolve] App & version"
         id: app
@@ -101,7 +99,7 @@ jobs:
             echo "🔎 Fetching latest application version for $APPLICATION_KEY"
             BASE="${{ vars.JFROG_URL }}"; BASE="${BASE%/}"
             jq_expr='(.results // .data // .items // .versions)[0].version'
-            RESP=$(curl -sS -H "Authorization: Bearer $APPTRUST_ACCESS_TOKEN" -H "Accept: application/json" "$BASE/apptrust/api/v1/applications/$APPLICATION_KEY/versions?order_by=created&limit=1" || true)
+            RESP=$(curl -sS -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "Accept: application/json" "$BASE/apptrust/api/v1/applications/$APPLICATION_KEY/versions?order_by=created&limit=1" || true)
             if LATEST_VERSION=$(echo "$RESP" | jq -er "$jq_expr" 2>/dev/null); then APP_VERSION="$LATEST_VERSION"; fi
           fi
           if [ -z "$APP_VERSION" ] || [ "$APP_VERSION" = "null" ]; then
@@ -131,13 +129,13 @@ jobs:
           echo "TARGET_STAGE=${{ steps.app.outputs.target_stage }}" >> $GITHUB_ENV
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
-          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          export JF_OIDC_TOKEN="$JF_OIDC_TOKEN"
           source bookverse-infra/libraries/bookverse-devops/scripts/promote-lib.sh
           fetch_summary
           echo "CURRENT_STAGE_BEFORE=${CURRENT_STAGE:-UNASSIGNED}" >> $GITHUB_ENV
           echo "RELEASE_STATUS_BEFORE=${RELEASE_STATUS:-UNKNOWN}" >> $GITHUB_ENV
           LC_FILE=$(mktemp)
-          CODE=$(curl -sS -L -o "$LC_FILE" -w "%{http_code}" "$JFROG_URL/access/api/v2/lifecycle/?project_key=$PROJECT_KEY" -H "Authorization: Bearer $APPTRUST_ACCESS_TOKEN" -H "Accept: application/json" || echo 000)
+          CODE=$(curl -sS -L -o "$LC_FILE" -w "%{http_code}" "$JFROG_URL/access/api/v2/lifecycle/?project_key=$PROJECT_KEY" -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "Accept: application/json" || echo 000)
           if [[ "$CODE" -lt 200 || "$CODE" -ge 300 ]]; then
             echo "❌ Failed to fetch lifecycles list for project '$PROJECT_KEY' (HTTP $CODE)" >&2
             cat "$LC_FILE" || true
@@ -176,7 +174,7 @@ jobs:
           set -euo pipefail
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
-          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          export JF_OIDC_TOKEN="$JF_OIDC_TOKEN"
           source bookverse-infra/libraries/bookverse-devops/scripts/promote-lib.sh
           fetch_summary
           ALLOW_RELEASE=false
@@ -189,7 +187,7 @@ jobs:
           set -euo pipefail
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
-          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          export JF_OIDC_TOKEN="$JF_OIDC_TOKEN"
           source bookverse-infra/libraries/bookverse-devops/scripts/promote-lib.sh
           for i in 1 2 3 4; do
             fetch_summary
@@ -309,7 +307,7 @@ jobs:
         run: |
           set -euo pipefail
           JF_URL='${{ vars.JFROG_URL }}'
-          TOKEN="$APPTRUST_ACCESS_TOKEN"
+          TOKEN="$JF_OIDC_TOKEN"
           PROJECT='${{ vars.PROJECT_KEY }}'
           SERVICE_NAME='${{ steps.app.outputs.service_name }}'
           DOCKER_REPO="${PROJECT}-${SERVICE_NAME}-internal-docker-release-local"
@@ -416,7 +414,7 @@ jobs:
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
           export APPLICATION_KEY='${{ steps.app.outputs.application_key }}'
-          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          export JF_OIDC_TOKEN="$JF_OIDC_TOKEN"
           
           # Load the self-healing tag management library
           source bookverse-infra/libraries/bookverse-devops/scripts/tag-management-lib.sh

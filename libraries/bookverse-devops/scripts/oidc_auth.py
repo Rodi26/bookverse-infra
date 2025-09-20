@@ -3,7 +3,7 @@
 OIDC Authentication Utility for BookVerse Services
 
 This module provides utilities for OIDC token exchange with JFrog, 
-replacing direct APPTRUST_ACCESS_TOKEN usage with proper OIDC authentication.
+implementing proper OIDC authentication for JFrog access.
 
 Usage:
     from oidc_auth import get_jfrog_token
@@ -108,21 +108,21 @@ def get_jfrog_token(
     jfrog_url: Optional[str] = None,
     provider_name: Optional[str] = None,
     project_key: Optional[str] = None,
-    fallback_env_var: str = "APPTRUST_ACCESS_TOKEN"
+    fallback_env_var: Optional[str] = None
 ) -> Optional[str]:
     """
     Get JFrog access token using OIDC authentication with fallback to environment variable.
     
-    This function implements the preferred authentication flow:
+    This function implements the OIDC authentication flow:
     1. Try to get token from JF_OIDC_TOKEN environment variable
     2. Try OIDC token exchange if in GitHub Actions environment
-    3. Fall back to legacy APPTRUST_ACCESS_TOKEN environment variable
+    3. Fall back to custom environment variable if specified
     
     Args:
         jfrog_url: JFrog platform URL (defaults to JFROG_URL env var)
         provider_name: OIDC provider name (auto-detected from repository if not provided)
         project_key: Project key (defaults to PROJECT_KEY env var)
-        fallback_env_var: Environment variable to use as fallback (default: APPTRUST_ACCESS_TOKEN)
+        fallback_env_var: Environment variable to use as fallback (optional)
         
     Returns:
         JFrog access token or None if not available
@@ -160,8 +160,11 @@ def get_jfrog_token(
                     if token:
                         return token
     
-    # Fall back to legacy environment variable
-    return os.environ.get(fallback_env_var, "").strip() or None
+    # Fall back to custom environment variable if specified
+    if fallback_env_var:
+        return os.environ.get(fallback_env_var, "").strip() or None
+    
+    return None
 
 
 def get_apptrust_base_url() -> Optional[str]:
@@ -188,15 +191,12 @@ def setup_environment_variables():
     """
     Set up environment variables for OIDC authentication.
     
-    This function ensures that both JF_OIDC_TOKEN and APPTRUST_ACCESS_TOKEN
-    are available for backward compatibility during the transition period.
+    This function ensures that JF_OIDC_TOKEN is available for OIDC authentication.
     """
     token = get_jfrog_token()
     if token:
         os.environ["JF_OIDC_TOKEN"] = token
-        # Set legacy variable for backward compatibility
-        if not os.environ.get("APPTRUST_ACCESS_TOKEN"):
-            os.environ["APPTRUST_ACCESS_TOKEN"] = token
+        # Token is now available as JF_OIDC_TOKEN
 
 
 if __name__ == "__main__":

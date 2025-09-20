@@ -94,10 +94,23 @@ get_all_versions() {
     local limit=100
     
     while true; do
-        local resp=$(curl -sS -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "Accept: application/json" \
-            "$base/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=$limit&offset=$offset&order_by=created&order_asc=false" || echo '{}')
+        local http_status
+        local resp_file=$(mktemp)
         
-        local versions=$(echo "$resp" | jq -r '.versions[]? | @json' 2>/dev/null || true)
+        http_status=$(curl -sS -L -o "$resp_file" -w "%{http_code}" \
+            "$base/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=$limit&offset=$offset&order_by=created&order_asc=false" \
+            -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+            -H "Accept: application/json")
+            
+        if [[ "$http_status" -lt 200 || "$http_status" -ge 300 ]]; then
+            log_error "Failed to fetch versions for $APPLICATION_KEY (HTTP $http_status)"
+            cat "$resp_file" >&2 || true
+            rm -f "$resp_file"
+            break
+        fi
+        
+        local versions=$(jq -r '.versions[]? | @json' "$resp_file" 2>/dev/null || true)
+        rm -f "$resp_file"
         
         if [[ -z "$versions" ]]; then
             break
