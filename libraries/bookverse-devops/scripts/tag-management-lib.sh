@@ -80,7 +80,7 @@ get_version_tags() {
     echo "$resp" | jq -r '.tags[]? // empty' 2>/dev/null || true
 }
 
-# Helper function: Add a tag to a version
+# Helper function: Add a tag to a version (using PATCH to update the version)
 add_tag() {
     local version="$1"
     local tag="$2"
@@ -92,41 +92,59 @@ add_tag() {
     
     log_info "Adding tag '$tag' to version $version..."
     local payload=$(jq -n --arg tag "$tag" '{tag: $tag}')
-    local http_status=$(curl -sS -X POST -o /dev/null -w "%{http_code}" \
-        "${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions/$version/tags" \
+    local url="${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions/$version"
+    
+    # Debug: Log the API call details
+    log_info "🔍 DEBUG: PATCH $url"
+    log_info "🔍 DEBUG: Payload: $payload"
+    
+    local temp_response=$(mktemp)
+    local http_status=$(curl -sS -X PATCH -o "$temp_response" -w "%{http_code}" \
+        "$url" \
+        -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$payload")
+        
+    log_info "🔍 DEBUG: HTTP Status: $http_status"
+    if [[ -s "$temp_response" ]]; then
+        log_info "🔍 DEBUG: Response: $(cat "$temp_response")"
+    fi
+    
+    if [[ "$http_status" -ge 200 && "$http_status" -lt 300 ]]; then
+        log_success "✅ Added tag '$tag' to version $version"
+        rm -f "$temp_response"
+        return 0
+    else
+        log_error "❌ Failed to add tag '$tag' to version $version (HTTP $http_status)"
+        rm -f "$temp_response"
+        return 1
+    fi
+}
+
+# Helper function: Remove a tag from a version by replacing it with 'valid'
+remove_tag() {
+    local version="$1"
+    local tag_to_remove="$2"
+    local replacement_tag="${3:-$TAG_VALID}"  # Default to 'valid' tag
+    
+    if [[ -z "$JFROG_URL" || -z "$JF_OIDC_TOKEN" || -z "$APPLICATION_KEY" || -z "$version" || -z "$tag_to_remove" ]]; then
+        log_error "Missing environment variables or parameters for remove_tag."
+        return 1
+    fi
+    
+    log_info "Replacing tag '$tag_to_remove' with '$replacement_tag' on version $version..."
+    local payload=$(jq -n --arg tag "$replacement_tag" '{tag: $tag}')
+    local http_status=$(curl -sS -X PATCH -o /dev/null -w "%{http_code}" \
+        "${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions/$version" \
         -H "Authorization: Bearer $JF_OIDC_TOKEN" \
         -H "Content-Type: application/json" \
         -d "$payload")
         
     if [[ "$http_status" -ge 200 && "$http_status" -lt 300 ]]; then
-        log_success "✅ Added tag '$tag' to version $version"
+        log_success "✅ Replaced tag '$tag_to_remove' with '$replacement_tag' on version $version"
         return 0
     else
-        log_error "❌ Failed to add tag '$tag' to version $version (HTTP $http_status)"
-        return 1
-    fi
-}
-
-# Helper function: Remove a tag from a version
-remove_tag() {
-    local version="$1"
-    local tag="$2"
-    
-    if [[ -z "$JFROG_URL" || -z "$JF_OIDC_TOKEN" || -z "$APPLICATION_KEY" || -z "$version" || -z "$tag" ]]; then
-        log_error "Missing environment variables or parameters for remove_tag."
-        return 1
-    fi
-    
-    log_info "Removing tag '$tag' from version $version..."
-    local http_status=$(curl -sS -X DELETE -o /dev/null -w "%{http_code}" \
-        "${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions/$version/tags/$tag" \
-        -H "Authorization: Bearer $JF_OIDC_TOKEN")
-        
-    if [[ "$http_status" -ge 200 && "$http_status" -lt 300 || "$http_status" -eq 404 ]]; then
-        log_success "✅ Removed tag '$tag' from version $version"
-        return 0
-    else
-        log_error "❌ Failed to remove tag '$tag' from version $version (HTTP $http_status)"
+        log_error "❌ Failed to replace tag '$tag_to_remove' with '$replacement_tag' on version $version (HTTP $http_status)"
         return 1
     fi
 }
@@ -209,6 +227,10 @@ validate_and_heal_tags() {
                 # STEP 4: Perform actual tag operations
                 log_info "🏷️ STEP 4: Performing tag operations..."
                 
+                # Small delay to ensure version is fully available
+                log_info "⏳ Waiting 3 seconds for version to be fully available..."
+                sleep 3
+                
                 # Check current tags on the latest candidate
                 local current_tags=$(get_version_tags "$latest_candidate")
                 local has_latest_tag=false
@@ -237,14 +259,10 @@ validate_and_heal_tags() {
                 # Perform tag operations
                 local changes_made=0
                 
-                # Remove 'latest' tag from incorrect versions
+                # Remove 'latest' tag from incorrect versions (replace with 'valid')
                 for version in $incorrect_latest_versions; do
-                    if remove_tag "$version" "$TAG_LATEST"; then
+                    if remove_tag "$version" "$TAG_LATEST" "$TAG_VALID"; then
                         changes_made=$((changes_made + 1))
-                        # Add 'valid' tag as replacement
-                        if add_tag "$version" "$TAG_VALID"; then
-                            log_info "✅ Replaced 'latest' with 'valid' on version $version"
-                        fi
                     fi
                 done
                 
