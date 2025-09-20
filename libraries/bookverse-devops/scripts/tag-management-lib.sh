@@ -64,6 +64,73 @@ compare_semver() {
     echo 0; return
 }
 
+# Helper function: Get current tags for a version
+get_version_tags() {
+    local version="$1"
+    
+    if [[ -z "$JFROG_URL" || -z "$JF_OIDC_TOKEN" || -z "$APPLICATION_KEY" || -z "$version" ]]; then
+        log_error "Missing environment variables or version for get_version_tags."
+        return 1
+    fi
+    
+    local base_url="${JFROG_URL%/}/apptrust/api/v1"
+    local url="$base_url/applications/$APPLICATION_KEY/versions/$version"
+    
+    local resp=$(curl -sS -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "Accept: application/json" "$url" 2>/dev/null)
+    echo "$resp" | jq -r '.tags[]? // empty' 2>/dev/null || true
+}
+
+# Helper function: Add a tag to a version
+add_tag() {
+    local version="$1"
+    local tag="$2"
+    
+    if [[ -z "$JFROG_URL" || -z "$JF_OIDC_TOKEN" || -z "$APPLICATION_KEY" || -z "$version" || -z "$tag" ]]; then
+        log_error "Missing environment variables or parameters for add_tag."
+        return 1
+    fi
+    
+    log_info "Adding tag '$tag' to version $version..."
+    local payload=$(jq -n --arg tag "$tag" '{tag: $tag}')
+    local http_status=$(curl -sS -X POST -o /dev/null -w "%{http_code}" \
+        "${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions/$version/tags" \
+        -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$payload")
+        
+    if [[ "$http_status" -ge 200 && "$http_status" -lt 300 ]]; then
+        log_success "✅ Added tag '$tag' to version $version"
+        return 0
+    else
+        log_error "❌ Failed to add tag '$tag' to version $version (HTTP $http_status)"
+        return 1
+    fi
+}
+
+# Helper function: Remove a tag from a version
+remove_tag() {
+    local version="$1"
+    local tag="$2"
+    
+    if [[ -z "$JFROG_URL" || -z "$JF_OIDC_TOKEN" || -z "$APPLICATION_KEY" || -z "$version" || -z "$tag" ]]; then
+        log_error "Missing environment variables or parameters for remove_tag."
+        return 1
+    fi
+    
+    log_info "Removing tag '$tag' from version $version..."
+    local http_status=$(curl -sS -X DELETE -o /dev/null -w "%{http_code}" \
+        "${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions/$version/tags/$tag" \
+        -H "Authorization: Bearer $JF_OIDC_TOKEN")
+        
+    if [[ "$http_status" -ge 200 && "$http_status" -lt 300 || "$http_status" -eq 404 ]]; then
+        log_success "✅ Removed tag '$tag' from version $version"
+        return 0
+    else
+        log_error "❌ Failed to remove tag '$tag' from version $version (HTTP $http_status)"
+        return 1
+    fi
+}
+
 # Main function: MINIMAL - just validate environment and exit
 validate_and_heal_tags() {
     log_info "🏥 Starting MINIMAL tag validation for $APPLICATION_KEY..."
@@ -138,6 +205,62 @@ validate_and_heal_tags() {
             
             if [[ -n "$latest_candidate" ]]; then
                 log_success "🎯 Latest SemVer candidate: $latest_candidate"
+                
+                # STEP 4: Perform actual tag operations
+                log_info "🏷️ STEP 4: Performing tag operations..."
+                
+                # Check current tags on the latest candidate
+                local current_tags=$(get_version_tags "$latest_candidate")
+                local has_latest_tag=false
+                
+                if echo "$current_tags" | grep -q "^$TAG_LATEST$"; then
+                    has_latest_tag=true
+                    log_info "✅ Version $latest_candidate already has '$TAG_LATEST' tag"
+                else
+                    log_info "❌ Version $latest_candidate missing '$TAG_LATEST' tag"
+                fi
+                
+                # Find versions that incorrectly have the 'latest' tag
+                log_info "🔍 Checking for incorrect 'latest' tags..."
+                local incorrect_latest_versions=""
+                
+                for version in $prod_versions; do
+                    if [[ "$version" != "$latest_candidate" ]]; then
+                        local tags=$(get_version_tags "$version")
+                        if echo "$tags" | grep -q "^$TAG_LATEST$"; then
+                            log_warning "⚠️ Version $version incorrectly has '$TAG_LATEST' tag"
+                            incorrect_latest_versions="$incorrect_latest_versions $version"
+                        fi
+                    fi
+                done
+                
+                # Perform tag operations
+                local changes_made=0
+                
+                # Remove 'latest' tag from incorrect versions
+                for version in $incorrect_latest_versions; do
+                    if remove_tag "$version" "$TAG_LATEST"; then
+                        changes_made=$((changes_made + 1))
+                        # Add 'valid' tag as replacement
+                        if add_tag "$version" "$TAG_VALID"; then
+                            log_info "✅ Replaced 'latest' with 'valid' on version $version"
+                        fi
+                    fi
+                done
+                
+                # Add 'latest' tag to correct version if missing
+                if [[ "$has_latest_tag" == false ]]; then
+                    if add_tag "$latest_candidate" "$TAG_LATEST"; then
+                        changes_made=$((changes_made + 1))
+                        log_success "🎯 Added '$TAG_LATEST' tag to version $latest_candidate"
+                    fi
+                fi
+                
+                if [[ $changes_made -gt 0 ]]; then
+                    log_success "🎉 Tag management completed! Made $changes_made changes."
+                else
+                    log_success "✅ No changes needed - tags are already correct!"
+                fi
             else
                 log_warning "⚠️ No valid SemVer versions found in PROD"
             fi
@@ -151,7 +274,7 @@ validate_and_heal_tags() {
     
     rm -f "$temp_file"
     
-    log_success "✅ STEP 3 completed - Latest candidate identification tested"
+    log_success "✅ STEP 4 completed - Full tag management with actual operations"
     return 0
 }
 
