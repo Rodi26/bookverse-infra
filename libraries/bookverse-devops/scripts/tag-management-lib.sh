@@ -77,7 +77,7 @@ get_version_tags() {
     local url="$base_url/applications/$APPLICATION_KEY/versions/$version"
     
     local resp=$(curl -sS -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "Accept: application/json" "$url" 2>/dev/null)
-    echo "$resp" | jq -r '.tags[]? // empty' 2>/dev/null || true
+    echo "$resp" | jq -r '.tag // empty' 2>/dev/null || true
 }
 
 # Helper function: Add a tag to a version (using PATCH to update the version)
@@ -163,8 +163,8 @@ validate_and_heal_tags() {
     log_info "  - JFROG_URL: $JFROG_URL"
     log_info "  - JF_OIDC_TOKEN: [REDACTED]"
     
-    # Test basic API connectivity
-    local api_url="${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=5&order_by=created&order_asc=false"
+    # Test basic API connectivity and fetch more versions for comprehensive tag checking
+    local api_url="${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=50&order_by=created&order_asc=false"
     log_info "🌐 Testing API call: $api_url"
     
     local temp_file=$(mktemp)
@@ -179,7 +179,7 @@ validate_and_heal_tags() {
     
     if [[ "$http_status" -ge 200 && "$http_status" -lt 300 ]]; then
         local version_count=$(jq -r '.versions | length' "$temp_file" 2>/dev/null || echo "0")
-        log_success "✅ API call successful! Found $version_count versions"
+        log_success "✅ API call successful! Found $version_count versions for comprehensive tag checking"
         
         # Log first few versions for verification
         log_info "📋 Recent versions:"
@@ -237,7 +237,8 @@ validate_and_heal_tags() {
                 for version in $prod_versions; do
                     if [[ "$version" != "$latest_candidate" ]]; then
                         local tags=$(get_version_tags "$version")
-                        if echo "$tags" | grep -q "^$TAG_LATEST$"; then
+                        log_info "🔍 Version $version current tag: '$tags'"
+                        if [[ -n "$tags" && "$tags" == "$TAG_LATEST" ]]; then
                             log_warning "⚠️ Version $version incorrectly has '$TAG_LATEST' tag"
                             incorrect_latest_versions="$incorrect_latest_versions $version"
                         fi
