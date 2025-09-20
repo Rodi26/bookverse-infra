@@ -44,16 +44,46 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y jq
 
-      - name: "[Setup] JFrog CLI"
-        uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
-        env:
-          JF_URL: ${{ vars.JFROG_URL }}
-          JF_PROJECT: ${{ vars.PROJECT_KEY }}
-        with:
-          version: latest
-          oidc-provider-name: ${{ inputs.oidc_provider_name }}
-          disable-job-summary: false
-          oidc-audience: ${{ vars.JFROG_URL }}
+      - name: "[Auth] Exchange GitHub OIDC for JFrog access token"
+        run: |
+          set -euo pipefail
+          BASE="${{ vars.JFROG_URL }}"; BASE="${BASE%/}"
+          if [[ -z "$BASE" ]]; then echo "Missing vars.JFROG_URL" >&2; exit 1; fi
+          PROVIDER_NAME="${{ inputs.oidc_provider_name }}"
+          if [[ -z "$PROVIDER_NAME" ]]; then echo "Missing oidc_provider_name input" >&2; exit 1; fi
+          JF_URL="$BASE"
+          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+            echo "❌ Missing GitHub OIDC request env vars" >&2; exit 1; fi
+          echo "🔑 Minting GitHub OIDC ID token (audience=$JF_URL)"
+          ID_TOKEN=$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${JF_URL}" | jq -r .value)
+          if [[ -z "$ID_TOKEN" || "$ID_TOKEN" == "null" ]]; then echo "❌ Failed to fetch GitHub ID token" >&2; exit 1; fi
+          echo "🔁 Exchanging OIDC for JFrog access token (provider=$PROVIDER_NAME)"
+          PAYLOAD=$(jq -n --arg jwt "$ID_TOKEN" \
+            --arg provider_name "$PROVIDER_NAME" \
+            --arg project_key "${{ vars.PROJECT_KEY }}" \
+            --arg job_id "${{ github.job }}" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg repo "https://github.com/${{ github.repository }}" \
+            --arg revision "${{ github.sha }}" \
+            --arg branch "${{ github.ref_name }}" \
+            '{
+              grant_type:"urn:ietf:params:oauth:grant-type:token-exchange",
+              subject_token_type:"urn:ietf:params:oauth:token-type:id_token",
+              subject_token:$jwt,
+              provider_name:$provider_name,
+              project_key:$project_key,
+              job_id:$job_id,
+              run_id:$run_id,
+              repo:$repo,
+              revision:$revision,
+              branch:$branch
+            }')
+          RESP=$(curl -fsSL -X POST "$JF_URL/access/api/v1/oidc/token" -H "Content-Type: application/json" -d "$PAYLOAD")
+          JF_OIDC_TOKEN=$(echo "$RESP" | jq -er '.access_token // empty' || true)
+          if [[ -z "$JF_OIDC_TOKEN" ]]; then echo "Failed to obtain JFrog access token: $RESP" >&2; exit 1; fi
+          echo "JF_OIDC_TOKEN=$JF_OIDC_TOKEN" >> $GITHUB_ENV
+          # Legacy compatibility: also set APPTRUST_ACCESS_TOKEN during transition
+          echo "APPTRUST_ACCESS_TOKEN=$JF_OIDC_TOKEN" >> $GITHUB_ENV
 
       - name: "[Resolve] App & version"
         id: app
@@ -68,9 +98,11 @@ jobs:
           TARGET_STAGE='${{ inputs.target_stage }}'
           APP_VERSION='${{ inputs.application_version }}'
           if [ -z "$APP_VERSION" ]; then
-            RESP=$(curl -sS -H "Authorization: Bearer ${{ secrets.JFROG_ADMIN_TOKEN }}" -H "Accept: application/json" \
-              "${{ vars.JFROG_URL }}/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=1&order_by=created&order_asc=false")
-            APP_VERSION=$(echo "$RESP" | jq -r '.versions[0].version // empty')
+            echo "🔎 Fetching latest application version for $APPLICATION_KEY"
+            BASE="${{ vars.JFROG_URL }}"; BASE="${BASE%/}"
+            jq_expr='(.results // .data // .items // .versions)[0].version'
+            RESP=$(curl -sS -H "Authorization: Bearer $APPTRUST_ACCESS_TOKEN" -H "Accept: application/json" "$BASE/apptrust/api/v1/applications/$APPLICATION_KEY/versions?order_by=created&limit=1" || true)
+            if LATEST_VERSION=$(echo "$RESP" | jq -er "$jq_expr" 2>/dev/null); then APP_VERSION="$LATEST_VERSION"; fi
           fi
           if [ -z "$APP_VERSION" ] || [ "$APP_VERSION" = "null" ]; then
             echo "❌ Could not determine app version for $APPLICATION_KEY" >&2
@@ -81,6 +113,12 @@ jobs:
           echo "target_stage=$TARGET_STAGE" >> $GITHUB_OUTPUT
           echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
           echo "Resolved: $APPLICATION_KEY@$APP_VERSION → $TARGET_STAGE"
+
+      - name: "[Setup] Checkout bookverse-infra for shared scripts"
+        uses: actions/checkout@v4
+        with:
+          repository: yonatanp-jfrog/bookverse-infra
+          path: bookverse-infra
 
       - name: "[Setup] AppTrust context"
         run: |
@@ -93,13 +131,13 @@ jobs:
           echo "TARGET_STAGE=${{ steps.app.outputs.target_stage }}" >> $GITHUB_ENV
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
-          export JFROG_ADMIN_TOKEN='${{ secrets.JFROG_ADMIN_TOKEN }}'
-          source .github/scripts/promote_lib.sh
+          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          source bookverse-infra/libraries/bookverse-devops/scripts/promote-lib.sh
           fetch_summary
           echo "CURRENT_STAGE_BEFORE=${CURRENT_STAGE:-UNASSIGNED}" >> $GITHUB_ENV
           echo "RELEASE_STATUS_BEFORE=${RELEASE_STATUS:-UNKNOWN}" >> $GITHUB_ENV
           LC_FILE=$(mktemp)
-          CODE=$(curl -sS -L -o "$LC_FILE" -w "%{http_code}" "$JFROG_URL/access/api/v2/lifecycle/?project_key=$PROJECT_KEY" -H "Authorization: Bearer $JFROG_ADMIN_TOKEN" -H "Accept: application/json" || echo 000)
+          CODE=$(curl -sS -L -o "$LC_FILE" -w "%{http_code}" "$JFROG_URL/access/api/v2/lifecycle/?project_key=$PROJECT_KEY" -H "Authorization: Bearer $APPTRUST_ACCESS_TOKEN" -H "Accept: application/json" || echo 000)
           if [[ "$CODE" -lt 200 || "$CODE" -ge 300 ]]; then
             echo "❌ Failed to fetch lifecycles list for project '$PROJECT_KEY' (HTTP $CODE)" >&2
             cat "$LC_FILE" || true
@@ -138,8 +176,8 @@ jobs:
           set -euo pipefail
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
-          export JFROG_ADMIN_TOKEN='${{ secrets.JFROG_ADMIN_TOKEN }}'
-          source .github/scripts/promote_lib.sh
+          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          source bookverse-infra/libraries/bookverse-devops/scripts/promote-lib.sh
           fetch_summary
           ALLOW_RELEASE=false
           advance_one_step
@@ -151,8 +189,8 @@ jobs:
           set -euo pipefail
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
-          export JFROG_ADMIN_TOKEN='${{ secrets.JFROG_ADMIN_TOKEN }}'
-          source .github/scripts/promote_lib.sh
+          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          source bookverse-infra/libraries/bookverse-devops/scripts/promote-lib.sh
           for i in 1 2 3 4; do
             fetch_summary
             PREV=$(display_stage_for "${CURRENT_STAGE:-UNASSIGNED}")
@@ -271,7 +309,7 @@ jobs:
         run: |
           set -euo pipefail
           JF_URL='${{ vars.JFROG_URL }}'
-          TOKEN='${{ secrets.JFROG_ADMIN_TOKEN }}'
+          TOKEN="$APPTRUST_ACCESS_TOKEN"
           PROJECT='${{ vars.PROJECT_KEY }}'
           SERVICE_NAME='${{ steps.app.outputs.service_name }}'
           DOCKER_REPO="${PROJECT}-${SERVICE_NAME}-internal-docker-release-local"
@@ -335,7 +373,7 @@ jobs:
           EVIDENCE_PRIVATE_KEY: ${{ secrets.EVIDENCE_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          export JFROG_URL='${{ vars.JFROG_URL }}'; export PROJECT_KEY='${{ vars.PROJECT_KEY }}'; export JFROG_ADMIN_TOKEN='${{ secrets.JFROG_ADMIN_TOKEN }}'; source .github/scripts/promote_lib.sh
+          export JFROG_URL='${{ vars.JFROG_URL }}'; export PROJECT_KEY='${{ vars.PROJECT_KEY }}'; source bookverse-infra/libraries/bookverse-devops/scripts/promote-lib.sh
           fetch_summary
           svc_name='${{ steps.app.outputs.service_name }}'
           docker_repo="${{ vars.PROJECT_KEY }}-${svc_name}-internal-docker-release-local"
@@ -343,48 +381,62 @@ jobs:
           export RELEASE_INCLUDED_REPO_KEYS=$(printf '["%s","%s"]' "$docker_repo" "$generic_repo")
           if [[ "$(display_stage_for "${CURRENT_STAGE:-}")" == "STAGING" ]]; then
             ALLOW_RELEASE=true
+            set +e
             advance_one_step
+            RC=$?
+            set -e
+            fetch_summary
+            REL_STATUS="${RELEASE_STATUS:-UNKNOWN}"
+            STATUS="FAILED"
+            case "$REL_STATUS" in
+              RELEASED|TRUSTED_RELEASE|released|trusted_release) STATUS="SUCCESS" ;;
+            esac
+            if [[ "$RC" -ne 0 ]]; then STATUS="FAILED"; fi
+            echo "PROMO_RELEASE_ACTUAL=${REL_STATUS}" >> $GITHUB_ENV
+            echo "PROMO_RELEASE_STATUS=$STATUS" >> $GITHUB_ENV
+            echo "🎯 PROD Release: actual status ${REL_STATUS} — ${STATUS}"
           else
             echo "Skipping release: current stage is $(display_stage_for "${CURRENT_STAGE:-UNASSIGNED}")"
+            echo "PROMO_RELEASE_STATUS=SKIPPED" >> $GITHUB_ENV
           fi
 
-      - name: "[Tags] Enforce PROD 'latest' invariants"
+      - name: "[Tags] Self-Healing Tag Management"
         run: |
           set -euo pipefail
-          if ! command -v jq >/dev/null 2>&1; then sudo apt-get update -y && sudo apt-get install -y jq; fi
-          APP_KEY="$APPLICATION_KEY"
-          BASE='${{ vars.JFROG_URL }}/apptrust/api/v1'
-          TOKEN='${{ secrets.JFROG_ADMIN_TOKEN }}'
-          RESP=$(mktemp)
-          code=$(curl -sS -L -o "$RESP" -w "%{http_code}" \
-            "$BASE/applications/$APP_KEY/versions?limit=1000&order_by=created&order_asc=false" \
-            -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" || echo 000)
-          if [[ "$code" -lt 200 || "$code" -ge 300 ]]; then
-            echo "❌ Failed to list versions (HTTP $code)" >&2; cat "$RESP" || true; exit 1
-          fi
-          DESIRED=$(jq -r '[.versions[] | select((.release_status|tostring|ascii_upcase)=="RELEASED" or (.release_status|tostring|ascii_upcase)=="TRUSTED_RELEASE") | .version] | unique | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | sort_by(split(".")|map(tonumber)) | last // empty' "$RESP")
-          if [[ -z "$DESIRED" ]]; then
-            mapfile -t PREV_LATEST < <(jq -r '.versions[] | select(.tag=="latest") | .version' "$RESP")
-            for pv in "${PREV_LATEST[@]:-}"; do
-              [ -z "$pv" ] && continue
-              restore=$(jq -r --arg v "$pv" '.versions[] | select(.version==$v) | (.properties.original_tag_before_latest[0] // .version // "")' "$RESP")
-              printf '{"tag":"%s","delete_properties":["original_tag_before_latest"]}' "$restore" > body.json
-              curl -sS -L -X PATCH "$BASE/applications/$APP_KEY/versions/$pv" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d @body.json | cat
-            done
-            rm -f "$RESP" body.json
+          echo "🏥 Running self-healing tag management for promotion"
+          
+          if [[ "${PROMO_RELEASE_STATUS:-}" != "SUCCESS" ]]; then
+            echo "ℹ️ Skipping tag management; release not successful (status: ${PROMO_RELEASE_STATUS:-UNKNOWN})"
             exit 0
           fi
-          CURR_TAG=$(jq -r --arg v "$DESIRED" '.versions[] | select(.version==$v) | (.tag // "")' "$RESP")
-          jq -n --arg ct "$CURR_TAG" '{tag:"latest", properties:{original_tag_before_latest:[$ct]}}' > body.json
-          curl -sS -L -X PATCH "$BASE/applications/$APP_KEY/versions/$DESIRED" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d @body.json | cat
-          mapfile -t OTHERS < <(jq -r --arg v "$DESIRED" '.versions[] | select(.tag=="latest" and .version!=$v) | .version' "$RESP")
-          for ov in "${OTHERS[@]:-}"; do
-            [ -z "$ov" ] && continue
-            restore=$(jq -r --arg v "$ov" '.versions[] | select(.version==$v) | (.properties.original_tag_before_latest[0] // .version // "")' "$RESP")
-            printf '{"tag":"%s","delete_properties":["original_tag_before_latest"]}' "$restore" > body.json
-            curl -sS -L -X PATCH "$BASE/applications/$APP_KEY/versions/$ov" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d @body.json | cat
-          done
-          rm -f "$RESP" body.json || true
+          
+          echo "✅ PROD release successful, running comprehensive tag validation and healing"
+          
+          # Set up environment for tag management library
+          export JFROG_URL='${{ vars.JFROG_URL }}'
+          export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
+          export APPLICATION_KEY='${{ steps.app.outputs.application_key }}'
+          export JF_OIDC_TOKEN="$APPTRUST_ACCESS_TOKEN"
+          
+          # Load the self-healing tag management library
+          source bookverse-infra/libraries/bookverse-devops/scripts/tag-management-lib.sh
+          
+          # Run comprehensive tag validation and healing
+          # This will:
+          # 1. Find all versions and their current states
+          # 2. Identify the highest SemVer version in PROD (latest candidate)
+          # 3. Validate all tags are correct based on version states
+          # 4. Fix any inconsistencies (add/remove tags as needed)
+          # 5. Handle quarantined versions, non-SemVer versions, etc.
+          validate_and_heal_tags
+          
+          echo ""
+          echo "🎯 Tag management completed for version ${{ steps.app.outputs.app_version }}"
+          echo "📋 All versions now have correct tags based on their states:"
+          echo "   - 'latest': Highest SemVer version in PROD"
+          echo "   - 'quarantine': Versions that were rolled back"
+          echo "   - 'valid': Other valid SemVer versions"
+          echo "   - Non-SemVer versions: No special tags (ignored for 'latest')"
 
       - name: "[Summary] Promotion"
         if: always()
