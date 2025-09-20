@@ -97,29 +97,19 @@ get_all_versions() {
         local http_status
         local resp_file=$(mktemp)
         
-        local api_url="$base/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=$limit&offset=$offset&order_by=created&order_asc=false"
-        log_info "🌐 API Call: $api_url"
-        
         http_status=$(curl -sS -L -o "$resp_file" -w "%{http_code}" \
-            "$api_url" \
+            "$base/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=$limit&offset=$offset&order_by=created&order_asc=false" \
             -H "Authorization: Bearer $JF_OIDC_TOKEN" \
             -H "Accept: application/json")
             
-        log_info "📡 HTTP Status: $http_status"
-        
         if [[ "$http_status" -lt 200 || "$http_status" -ge 300 ]]; then
             log_error "Failed to fetch versions for $APPLICATION_KEY (HTTP $http_status)"
-            log_error "Response content:"
             cat "$resp_file" >&2 || true
             rm -f "$resp_file"
             break
         fi
         
-        log_info "📄 Raw API Response:"
-        cat "$resp_file" || true
-        
         local versions=$(jq -r '.versions[]? | @json' "$resp_file" 2>/dev/null || true)
-        log_info "🔍 Parsed versions count: $(echo "$versions" | wc -l)"
         rm -f "$resp_file"
         
         if [[ -z "$versions" ]]; then
@@ -151,15 +141,10 @@ calculate_latest_candidate() {
         if [[ -z "$version_json" ]]; then continue; fi
         
         local version=$(echo "$version_json" | jq -r '.version')
-        local current_stage=$(echo "$version_json" | jq -r '.current_stage // empty')
         local release_status=$(echo "$version_json" | jq -r '.release_status // empty')
         
-        # Only consider versions that are in PROD stage
-        if [[ "$current_stage" != "PROD" ]]; then
-            continue
-        fi
-        
-        # Only consider released versions
+        # Only consider versions that are released to PROD
+        # In AppTrust, RELEASED status means the version is in PROD
         if [[ "$release_status" != "RELEASED" && "$release_status" != "TRUSTED_RELEASE" ]]; then
             continue
         fi
@@ -243,18 +228,17 @@ get_version_tags() {
 # Determine what tag a version should have based on its state
 determine_correct_tag() {
     local version="$1"
-    local current_stage="$2"
-    local release_status="$3"
-    local is_latest_candidate="$4"
+    local release_status="$2"
+    local is_latest_candidate="$3"
     
-    # If this is the latest candidate and in PROD, it should have "latest"
-    if [[ "$is_latest_candidate" == "true" && "$current_stage" == "PROD" ]]; then
+    # If this is the latest candidate and released to PROD, it should have "latest"
+    if [[ "$is_latest_candidate" == "true" && ("$release_status" == "RELEASED" || "$release_status" == "TRUSTED_RELEASE") ]]; then
         echo "$TAG_LATEST"
         return
     fi
     
-    # If version was rolled back or quarantined
-    if [[ "$current_stage" == "QUARANTINE" || "$release_status" == "QUARANTINED" ]]; then
+    # If version was rolled back
+    if [[ "$release_status" == "ROLLED_BACK" ]]; then
         echo "$TAG_QUARANTINE"
         return
     fi
@@ -281,7 +265,6 @@ heal_tag_inconsistencies() {
         if [[ -z "$version_json" ]]; then continue; fi
         
         local version=$(echo "$version_json" | jq -r '.version')
-        local current_stage=$(echo "$version_json" | jq -r '.current_stage // empty')
         local release_status=$(echo "$version_json" | jq -r '.release_status // empty')
         local current_tags=$(echo "$version_json" | jq -r '.tag // empty')
         
@@ -292,7 +275,7 @@ heal_tag_inconsistencies() {
         fi
         
         # Determine what tag this version should have
-        local correct_tag=$(determine_correct_tag "$version" "$current_stage" "$release_status" "$is_latest_candidate")
+        local correct_tag=$(determine_correct_tag "$version" "$release_status" "$is_latest_candidate")
         
         # Get actual current tags for this version
         local actual_tags=$(get_version_tags "$version")
@@ -300,7 +283,7 @@ heal_tag_inconsistencies() {
         local has_quarantine=$(echo "$actual_tags" | grep -q "^$TAG_QUARANTINE$" && echo "true" || echo "false")
         local has_valid=$(echo "$actual_tags" | grep -q "^$TAG_VALID$" && echo "true" || echo "false")
         
-        log_info "Version $version: stage=$current_stage, status=$release_status, should_have='$correct_tag'"
+        log_info "Version $version: status=$release_status, should_have='$correct_tag'"
         log_info "  Current tags: $(echo "$actual_tags" | tr '\n' ' ' | sed 's/ $//')"
         
         # Remove incorrect tags
