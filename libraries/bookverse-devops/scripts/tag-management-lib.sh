@@ -97,19 +97,29 @@ get_all_versions() {
         local http_status
         local resp_file=$(mktemp)
         
+        local api_url="$base/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=$limit&offset=$offset&order_by=created&order_asc=false"
+        log_info "🌐 API Call: $api_url"
+        
         http_status=$(curl -sS -L -o "$resp_file" -w "%{http_code}" \
-            "$base/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=$limit&offset=$offset&order_by=created&order_asc=false" \
+            "$api_url" \
             -H "Authorization: Bearer $JF_OIDC_TOKEN" \
             -H "Accept: application/json")
             
+        log_info "📡 HTTP Status: $http_status"
+        
         if [[ "$http_status" -lt 200 || "$http_status" -ge 300 ]]; then
             log_error "Failed to fetch versions for $APPLICATION_KEY (HTTP $http_status)"
+            log_error "Response content:"
             cat "$resp_file" >&2 || true
             rm -f "$resp_file"
             break
         fi
         
+        log_info "📄 Raw API Response:"
+        cat "$resp_file" || true
+        
         local versions=$(jq -r '.versions[]? | @json' "$resp_file" 2>/dev/null || true)
+        log_info "🔍 Parsed versions count: $(echo "$versions" | wc -l)"
         rm -f "$resp_file"
         
         if [[ -z "$versions" ]]; then
