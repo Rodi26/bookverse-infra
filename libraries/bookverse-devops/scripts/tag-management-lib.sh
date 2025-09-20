@@ -219,31 +219,42 @@ validate_and_heal_tags() {
                 log_info "⏳ Ensuring version is ready for tag operations..."
                 sleep 3
                 
-                # Check current tags on the latest candidate
-                local current_tags=$(get_version_tags "$latest_candidate")
+                # Check current tags using the versions list data (more efficient)
+                log_info "🔍 Analyzing tags from versions list data..."
                 local has_latest_tag=false
-                
-                if echo "$current_tags" | grep -q "^$TAG_LATEST$"; then
-                    has_latest_tag=true
-                    log_info "✅ Version $latest_candidate already has '$TAG_LATEST' tag"
-                else
-                    log_info "❌ Version $latest_candidate missing '$TAG_LATEST' tag"
-                fi
-                
-                # Find versions that incorrectly have the 'latest' tag
-                log_info "🔍 Checking for incorrect 'latest' tags..."
                 local incorrect_latest_versions=""
                 
-                for version in $prod_versions; do
-                    if [[ "$version" != "$latest_candidate" ]]; then
-                        local tags=$(get_version_tags "$version")
-                        log_info "🔍 Version $version current tag: '$tags'"
-                        if [[ -n "$tags" && "$tags" == "$TAG_LATEST" ]]; then
+                # Parse the versions data to check tags
+                while IFS= read -r version_json; do
+                    if [[ -z "$version_json" ]]; then continue; fi
+                    
+                    local version=$(echo "$version_json" | jq -r '.version')
+                    local release_status=$(echo "$version_json" | jq -r '.release_status // empty')
+                    local current_tag=$(echo "$version_json" | jq -r '.tag // empty')
+                    
+                    # Only check PROD versions
+                    if [[ "$release_status" != "RELEASED" && "$release_status" != "TRUSTED_RELEASE" ]]; then
+                        continue
+                    fi
+                    
+                    log_info "🔍 Version $version (${release_status}) current tag: '$current_tag'"
+                    
+                    if [[ "$version" == "$latest_candidate" ]]; then
+                        # Check if latest candidate has the latest tag
+                        if [[ "$current_tag" == "$TAG_LATEST" ]]; then
+                            has_latest_tag=true
+                            log_info "✅ Version $latest_candidate already has '$TAG_LATEST' tag"
+                        else
+                            log_info "❌ Version $latest_candidate missing '$TAG_LATEST' tag (current: '$current_tag')"
+                        fi
+                    else
+                        # Check if other versions incorrectly have the latest tag
+                        if [[ "$current_tag" == "$TAG_LATEST" ]]; then
                             log_warning "⚠️ Version $version incorrectly has '$TAG_LATEST' tag"
                             incorrect_latest_versions="$incorrect_latest_versions $version"
                         fi
                     fi
-                done
+                done < <(jq -c '.versions[]' "$temp_file" 2>/dev/null || echo "")
                 
                 # Perform tag operations
                 local changes_made=0
