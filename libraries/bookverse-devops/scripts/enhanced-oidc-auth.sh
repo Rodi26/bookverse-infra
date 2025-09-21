@@ -482,6 +482,66 @@ cleanup_token_cache() {
 main() {
   local command="${1:-}"
   
+  # Handle --service-name style arguments (workflow compatibility)
+  if [[ "$command" == "--service-name" ]]; then
+    local service_name=""
+    local provider_name=""
+    local jfrog_url=""
+    local docker_registry=""
+    local version="latest"
+    local verbose_flag=false
+    
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+      case $1 in
+        --service-name)
+          service_name="$2"
+          shift 2
+          ;;
+        --provider-name)
+          provider_name="$2"
+          shift 2
+          ;;
+        --jfrog-url)
+          jfrog_url="$2"
+          export JFROG_URL="$jfrog_url"
+          shift 2
+          ;;
+        --docker-registry)
+          docker_registry="$2"
+          export DOCKER_REGISTRY="$docker_registry"
+          shift 2
+          ;;
+        --version)
+          version="$2"
+          shift 2
+          ;;
+        --verbose)
+          verbose_flag=true
+          export VERBOSE=true
+          shift
+          ;;
+        *)
+          log_error "Unknown argument: $1"
+          exit 1
+          ;;
+      esac
+    done
+    
+    # Validate required arguments
+    if [[ -z "$service_name" ]]; then
+      log_error "Service name is required (--service-name)"
+      exit 1
+    fi
+    
+    log_debug "Parsed CLI arguments: service=$service_name, provider=$provider_name, jfrog_url=$jfrog_url, version=$version, verbose=$verbose_flag"
+    
+    # Generate token using the parsed arguments
+    generate_enhanced_oidc_token "$service_name" "$version"
+    return $?
+  fi
+  
+  # Handle traditional command format
   case "$command" in
     "generate"|"")
       local service_name="${2:-}"
@@ -523,9 +583,13 @@ Usage:
   $0 list-services                         List available services
   $0 help                                  Show this help
 
+Alternative Usage (workflow compatibility):
+  $0 --service-name <name> [--version <ver>] [--jfrog-url <url>] [--verbose]
+
 Examples:
   $0 generate inventory 1.2.3
   $0 batch inventory:1.2.3 web:2.1.0 checkout
+  $0 --service-name web --jfrog-url https://example.jfrog.io --verbose
   
 Environment Variables:
   VERBOSE=true                             Enable debug logging
