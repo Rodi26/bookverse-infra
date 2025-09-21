@@ -21,6 +21,9 @@ jobs:
   test-and-publish:
     name: "Test & Publish Infrastructure Packages"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC authentication
     
     steps:
       - name: "Checkout Code"

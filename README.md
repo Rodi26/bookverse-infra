@@ -7,6 +7,7 @@
 This single infrastructure application publishes multiple packages:
 
 ### `bookverse-core` (Python Package)
+
 Python commons library providing shared utilities for BookVerse services:
 - **Authentication**: JWT/OIDC authentication with `AuthUser` and validation
 - **Configuration**: Advanced YAML loading with deep merging and environment variables
@@ -14,6 +15,7 @@ Python commons library providing shared utilities for BookVerse services:
 - **Database**: SQLAlchemy session management and pagination utilities
 
 ### `bookverse-devops` (DevOps Package)
+
 CI/CD workflows, scripts, and tooling for BookVerse services:
 - **Reusable Workflows**: Standardized GitHub Actions workflows
 - **Scripts**: Semantic versioning, evidence generation, and deployment utilities
