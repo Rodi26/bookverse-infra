@@ -77,10 +77,10 @@ runs:
       run: |
         echo "🔑 Generating enhanced OIDC token with metadata..."
         
-        # Get GitHub OIDC ID token with admin mapping audience
-        echo "  • Requesting GitHub OIDC ID token for admin mapping..."
+        # Get GitHub OIDC ID token
+        echo "  • Requesting GitHub OIDC ID token..."
         GITHUB_OIDC_TOKEN=$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=jfac@01k3j41382vavx07qmg64302gv" | jq -r '.value')
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ inputs.oidc-provider-url }}" | jq -r '.value')
         
         if [[ "$GITHUB_OIDC_TOKEN" == "null" || -z "$GITHUB_OIDC_TOKEN" ]]; then
           echo "❌ Failed to get GitHub OIDC ID token"
@@ -95,36 +95,14 @@ runs:
           --arg jwt "$GITHUB_OIDC_TOKEN" \
           --arg provider_name "${{ inputs.oidc-provider-name }}" \
           --arg project_key "${{ inputs.project-key }}" \
-          --arg job_id "$GITHUB_JOB" \
-          --arg run_id "$GITHUB_RUN_ID" \
-          --arg run_number "$GITHUB_RUN_NUMBER" \
-          --arg repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
-          --arg revision "$GITHUB_SHA" \
-          --arg branch "$GITHUB_REF_NAME" \
-          --arg workflow "$GITHUB_WORKFLOW" \
-          --arg actor "$GITHUB_ACTOR" \
-          --arg application_key "${{ inputs.application-key }}" \
-          --arg service_name "${{ inputs.service-name }}" \
-          --arg version "${{ inputs.version }}" \
-          --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          --arg identity_mapping "platform-admin" \
           '{
             "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
             "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
             "subject_token": $jwt,
             "provider_name": $provider_name,
             "project_key": $project_key,
-            "job_id": $job_id,
-            "run_id": $run_id,
-            "run_number": $run_number,
-            "repo": $repo,
-            "revision": $revision,
-            "branch": $branch,
-            "workflow": $workflow,
-            "actor": $actor,
-            "application_key": $application_key,
-            "service_name": $service_name,
-            "version": $version,
-            "timestamp": $timestamp
+            "identity_mapping": $identity_mapping
           }')
         
         # Exchange for enhanced JFrog token
