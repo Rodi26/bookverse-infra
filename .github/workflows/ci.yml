@@ -588,16 +588,16 @@ jobs:
           echo "   - bookverse-devops: ${{ needs.build-bookverse-devops.outputs.build_name }}/${{ needs.build-bookverse-devops.outputs.build_number }}"
           echo "🔗 This creates an immutable link between application version and all published artifacts"
           
-        # Set JF_OIDC_TOKEN from JFrog CLI outputs (needed for AppTrust API authentication)
-        export JF_OIDC_TOKEN="${{ steps.jfrog-cli-auth.outputs.oidc-token }}"
-        
-        if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
-          echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
-          echo "Debug - JFrog CLI outputs:"
-          echo "  oidc-token: '${{ steps.jfrog-cli-auth.outputs.oidc-token }}'"
-          exit 1
-        fi
-        echo "✅ Using JF_OIDC_TOKEN for AppTrust API authentication"
+          # Set JF_OIDC_TOKEN from JFrog CLI outputs (needed for AppTrust API authentication)
+          export JF_OIDC_TOKEN="${{ steps.jfrog-cli-auth.outputs.oidc-token }}"
+          
+          if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
+            echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
+            echo "Debug - JFrog CLI outputs:"
+            echo "  oidc-token: '${{ steps.jfrog-cli-auth.outputs.oidc-token }}'"
+            exit 1
+          fi
+          echo "✅ Using JF_OIDC_TOKEN for AppTrust API authentication"
           
           BASE="${{ vars.JFROG_URL }}/apptrust/api/v1"
           APP_KEY="$APPLICATION_KEY"
