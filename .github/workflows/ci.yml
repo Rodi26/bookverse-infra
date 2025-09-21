@@ -126,7 +126,7 @@ jobs:
           path: bookverse-infra
 
       - name: "[Setup] JFrog CLI"
-        uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
+        uses: bookverse-infra/.github/actions/generate-oidc-token@main
         with:
           version: latest
           oidc-provider-name: bookverse-infra-github
@@ -181,7 +181,7 @@ jobs:
           echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
 
       - name: "[Setup] Install and Configure JFrog CLI"
-        uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
+        uses: bookverse-infra/.github/actions/generate-oidc-token@main
         env:
           JF_URL: ${{ vars.JFROG_URL }}
           JF_PROJECT: ${{ vars.PROJECT_KEY }}
@@ -238,17 +238,15 @@ jobs:
           echo "COVERAGE_PERCENT=$COVERAGE_PERCENT" >> $GITHUB_ENV
           echo "✅ Tests passed with $COVERAGE_PERCENT% coverage"
 
-      - name: "[Auth] OIDC Token Exchange (bookverse-devops shared script)"
-        id: exchange-oidc
-        run: |
-          echo "🔐 Using bookverse-devops shared OIDC exchange script"
-          ../bookverse-devops/scripts/exchange-oidc-token.sh \
-            --service-name "infra" \
-            --provider-name "bookverse-infra-github" \
-            --jfrog-url "${{ vars.JFROG_URL }}" \
-            --docker-registry "${{ vars.DOCKER_REGISTRY }}" \
-            --verbose
-          echo "✅ OIDC token exchange completed using shared bookverse-devops script"
+      - name: "[Auth] Enhanced OIDC Token Generation"
+        id: enhanced-oidc
+        uses: ./.github/actions/generate-oidc-token
+        with:
+          oidc-provider-url: ${{ vars.JFROG_URL }}
+          oidc-provider-name: bookverse-infra-github
+          service-name: infra
+          application-key: bookverse-infra
+          version: latest
 
       - name: "[Setup] Determine SemVer"
         id: determine-semver
@@ -469,7 +467,7 @@ jobs:
           echo "🏷️ Build: $BUILD_NAME #$BUILD_NUMBER"
 
       - name: "[Setup] Install and Configure JFrog CLI"
-        uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
+        uses: bookverse-infra/.github/actions/generate-oidc-token@main
         env:
           JF_URL: ${{ vars.JFROG_URL }}
           JF_PROJECT: ${{ vars.PROJECT_KEY }}
@@ -536,16 +534,12 @@ jobs:
           print('✅ All YAML files validated')
           "
 
-      - name: "[Auth] OIDC Token Exchange (bookverse-devops shared script)"
+      - name: "[Auth] Enhanced OIDC Token Generation"
         id: exchange-oidc
         run: |
           echo "🔐 Using bookverse-devops shared OIDC exchange script"
-          scripts/exchange-oidc-token.sh \
-            --service-name "infra" \
-            --provider-name "bookverse-infra-github" \
-            --jfrog-url "${{ vars.JFROG_URL }}" \
-            --docker-registry "${{ vars.DOCKER_REGISTRY }}" \
-            --verbose
+          source libraries/bookverse-devops/scripts/enhanced-oidc-auth.sh
+          generate_enhanced_oidc_token "infra" "latest"
           echo "✅ OIDC token exchange completed using shared bookverse-devops script"
 
       - name: "[Setup] Determine SemVer"
@@ -777,7 +771,7 @@ jobs:
           path: bookverse-infra
 
       - name: "[Setup] JFrog CLI"
-        uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
+        uses: bookverse-infra/.github/actions/generate-oidc-token@main
         with:
           version: latest
           oidc-provider-name: bookverse-infra-github
@@ -792,11 +786,11 @@ jobs:
           JFROG_CLI_BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
           JFROG_CLI_BUILD_PROJECT: ${{ vars.PROJECT_KEY }}
 
-      - name: "[Auth] OIDC Token Exchange (bookverse-devops shared script)"
+      - name: "[Auth] Enhanced OIDC Token Generation"
         id: exchange-oidc
         run: |
           echo "🔐 Using bookverse-devops shared OIDC exchange script"
-          bookverse-infra/libraries/bookverse-devops/scripts/exchange-oidc-token.sh \
+          bookverse-infra/libraries/bookverse-devops/scripts/enhanced-oidc-auth.sh \
             --service-name "infra" \
             --provider-name "bookverse-infra-github" \
             --jfrog-url "${{ vars.JFROG_URL }}" \
