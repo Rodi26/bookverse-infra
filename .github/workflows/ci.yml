@@ -281,8 +281,8 @@ jobs:
           echo "📋 Using shared evidence library for bookverse-core build"
           echo "🔐 Evidence will be cryptographically signed for compliance verification"
           
-          # Use evidence library from current repository since we're in bookverse-infra
-          source libraries/bookverse-devops/scripts/evidence-lib.sh
+          # Use evidence library from current repository (adjust path since we're in libraries/bookverse-core)
+          source ../bookverse-devops/scripts/evidence-lib.sh
           
           export PACKAGE_NAME="bookverse-core"
           export PACKAGE_VERSION="$PACKAGE_VERSION"
