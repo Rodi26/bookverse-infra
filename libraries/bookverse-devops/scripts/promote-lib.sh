@@ -254,7 +254,10 @@ apptrust_post() {
   local path="${1:-}"; local data="${2:-}"; local out_file="${3:-}"
   local url="${JFROG_URL}${path}"
   local code
+  # Use longer timeout for promotion operations which can take time
+  local timeout="${APPTRUST_TIMEOUT_SECONDS:-300}"  # 5 minutes default
   code=$(curl -sS -L -X POST -o "$out_file" -w "%{http_code}" \
+    --max-time "$timeout" \
     -H "Authorization: Bearer ${JF_OIDC_TOKEN}" \
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
