@@ -266,18 +266,39 @@ jobs:
               fi
             fi
             
-            echo "✅ Build info published successfully for bookverse-core"
-            echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
-          else
-            echo "❌ Failed to publish build info for bookverse-core"
-            exit 1
-          fi
+          echo "✅ Build info published successfully for bookverse-core"
+          echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
+        else
+          echo "❌ Failed to publish build info for bookverse-core"
+          exit 1
+        fi
 
       - name: "[Evidence] Attach build evidence using shared library"
+        env:
+          EVIDENCE_PRIVATE_KEY: ${{ secrets.EVIDENCE_PRIVATE_KEY }}
+          EVIDENCE_KEY_ALIAS: ${{ vars.EVIDENCE_KEY_ALIAS }}
         run: |
-          echo "📋 Evidence attachment temporarily disabled"
-          echo "ℹ️  Evidence library configuration needs to be completed"
-          echo "✅ Build completed successfully - evidence can be added later"
+          echo "📋 Using shared evidence library for bookverse-core build"
+          echo "🔐 Evidence will be cryptographically signed for compliance verification"
+          
+          # Use evidence library from current repository since we're in bookverse-infra
+          source libraries/bookverse-devops/scripts/evidence-lib.sh
+          
+          export PACKAGE_NAME="bookverse-core"
+          export PACKAGE_VERSION="$PACKAGE_VERSION"
+          export SERVICE_NAME="core"
+          export APPLICATION_KEY="bookverse-core"
+          export ATTACH_TO_BUILD="true"
+          export ATTACH_TO_PACKAGE="false"
+          
+          # Attach build-level evidence using shared library
+          echo "🏗️ Attaching SonarQube evidence to build"
+          attach_build_sonar_evidence
+          
+          echo "📋 Attaching FOSSA license evidence to build"
+          attach_build_fossa_evidence
+          
+          echo "✅ Evidence attached to build using shared library"
 
   build-bookverse-devops:
     name: "Build: bookverse-devops"
@@ -447,18 +468,39 @@ jobs:
               fi
             fi
             
-            echo "✅ Build info published successfully for bookverse-devops"
-            echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
-          else
-            echo "❌ Failed to publish build info for bookverse-devops"
-            exit 1
-          fi
+          echo "✅ Build info published successfully for bookverse-devops"
+          echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
+        else
+          echo "❌ Failed to publish build info for bookverse-devops"
+          exit 1
+        fi
 
       - name: "[Evidence] Attach build evidence using shared library"
+        env:
+          EVIDENCE_PRIVATE_KEY: ${{ secrets.EVIDENCE_PRIVATE_KEY }}
+          EVIDENCE_KEY_ALIAS: ${{ vars.EVIDENCE_KEY_ALIAS }}
         run: |
-          echo "📋 Evidence attachment temporarily disabled"
-          echo "ℹ️  Evidence library configuration needs to be completed"
-          echo "✅ Build completed successfully - evidence can be added later"
+          echo "📋 Using shared evidence library for bookverse-devops build"
+          echo "🔐 Evidence will be cryptographically signed for compliance verification"
+          
+          # Use evidence library from current repository (we're in the libraries/bookverse-devops folder)
+          source scripts/evidence-lib.sh
+          
+          export PACKAGE_NAME="bookverse-devops"
+          export PACKAGE_VERSION="$PACKAGE_VERSION"
+          export SERVICE_NAME="devops"
+          export APPLICATION_KEY="bookverse-devops"
+          export ATTACH_TO_BUILD="true"
+          export ATTACH_TO_PACKAGE="false"
+          
+          # Attach build-level evidence for DevOps library
+          echo "🏗️ Attaching SonarQube evidence to build"
+          attach_build_sonar_evidence
+          
+          echo "📋 Attaching FOSSA license evidence to build"
+          attach_build_fossa_evidence
+          
+          echo "✅ Evidence attached to build using shared library"
 
   create-promote:
     name: "Create Application Version & Promote (Conditional)"
@@ -509,17 +551,11 @@ jobs:
           disable-auto-build-publish: true
           disable-auto-evidence-collection: false
 
-      - name: "[Auth] OIDC Token Exchange (bookverse-devops shared script)"
-        id: exchange-oidc
+      - name: "[Auth] OIDC Token Ready"
+        id: auth-ready
         run: |
-          echo "🔐 Using bookverse-devops shared OIDC exchange script"
-          bookverse-infra/libraries/bookverse-devops/scripts/exchange-oidc-token.sh \
-            --service-name "infra" \
-            --provider-name "bookverse-infra-github" \
-            --jfrog-url "${{ vars.JFROG_URL }}" \
-            --docker-registry "${{ vars.DOCKER_REGISTRY }}" \
-            --verbose
-          echo "✅ OIDC token exchange completed using shared bookverse-devops script"
+          echo "🔐 OIDC authentication already configured via JFrog CLI setup"
+          echo "✅ Authentication ready for AppTrust API calls"
 
       - name: "[Setup] Install Python dependencies"
         run: |
