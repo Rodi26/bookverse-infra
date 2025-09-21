@@ -69,7 +69,6 @@ addopts = [
     "--cov-report=xml",
     "--cov-fail-under=30",
 ]
-asyncio_mode = "auto"
 
 [tool.black]
 line-length = 100
