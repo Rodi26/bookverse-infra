@@ -77,10 +77,10 @@ runs:
       run: |
         echo "🔑 Generating enhanced OIDC token with metadata..."
         
-        # Get GitHub OIDC ID token
-        echo "  • Requesting GitHub OIDC ID token..."
+        # Get GitHub OIDC ID token with admin mapping audience
+        echo "  • Requesting GitHub OIDC ID token for admin mapping..."
         GITHUB_OIDC_TOKEN=$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ inputs.oidc-provider-url }}" | jq -r '.value')
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=jfac@01k3j41382vavx07qmg64302gv" | jq -r '.value')
         
         if [[ "$GITHUB_OIDC_TOKEN" == "null" || -z "$GITHUB_OIDC_TOKEN" ]]; then
           echo "❌ Failed to get GitHub OIDC ID token"
