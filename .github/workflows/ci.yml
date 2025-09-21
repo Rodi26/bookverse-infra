@@ -266,12 +266,12 @@ jobs:
               fi
             fi
             
-          echo "✅ Build info published successfully for bookverse-core"
-          echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
-        else
-          echo "❌ Failed to publish build info for bookverse-core"
-          exit 1
-        fi
+            echo "✅ Build info published successfully for bookverse-core"
+            echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
+          else
+            echo "❌ Failed to publish build info for bookverse-core"
+            exit 1
+          fi
 
       - name: "[Evidence] Attach build evidence using shared library"
         env:
@@ -468,12 +468,12 @@ jobs:
               fi
             fi
             
-          echo "✅ Build info published successfully for bookverse-devops"
-          echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
-        else
-          echo "❌ Failed to publish build info for bookverse-devops"
-          exit 1
-        fi
+            echo "✅ Build info published successfully for bookverse-devops"
+            echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
+          else
+            echo "❌ Failed to publish build info for bookverse-devops"
+            exit 1
+          fi
 
       - name: "[Evidence] Attach build evidence using shared library"
         env:
