@@ -80,28 +80,46 @@ runs:
         echo "🔍 Checking available JFrog environment variables..."
         env | grep -i jf | head -10 || echo "No JF environment variables found"
         
-        # Try different possible token variable names
-        if [[ -n "${JF_OIDC_TOKEN:-}" ]]; then
-          TOKEN="$JF_OIDC_TOKEN"
-          echo "✅ Using JF_OIDC_TOKEN"
-        elif [[ -n "${JF_ACCESS_TOKEN:-}" ]]; then
-          TOKEN="$JF_ACCESS_TOKEN"
-          echo "✅ Using JF_ACCESS_TOKEN"
-        elif [[ -n "${JFROG_CLI_ACCESS_TOKEN:-}" ]]; then
-          TOKEN="$JFROG_CLI_ACCESS_TOKEN"
-          echo "✅ Using JFROG_CLI_ACCESS_TOKEN"
+        # The JFrog CLI action stores the token internally, we need to extract it
+        # Let's try to get the token using jf CLI commands
+        echo "🔍 Attempting to extract token from JFrog CLI configuration..."
+        
+        # Try to get the access token from JFrog CLI config
+        if command -v jf >/dev/null 2>&1; then
+          # Get the server ID that was configured
+          SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS:-setup-jfrog-cli-server}"
+          echo "📋 Using server ID: $SERVER_ID"
+          
+          # Try to extract the token from JFrog CLI config
+          if TOKEN=$(jf c show "$SERVER_ID" --format json 2>/dev/null | jq -r '.accessToken // empty' 2>/dev/null) && [[ -n "$TOKEN" && "$TOKEN" != "null" ]]; then
+            echo "✅ Successfully extracted token from JFrog CLI config"
+          else
+            echo "⚠️ Could not extract token from CLI config, trying alternative method..."
+            # Alternative: try to use the CLI directly for authentication test
+            if jf rt ping >/dev/null 2>&1; then
+              echo "✅ JFrog CLI authentication is working, will use CLI for Docker login"
+              USE_CLI_AUTH=true
+            else
+              echo "❌ JFrog CLI authentication failed"
+              exit 1
+            fi
+          fi
         else
-          echo "❌ No JFrog token found in environment variables"
+          echo "❌ JFrog CLI not found"
           exit 1
         fi
         
-        # Test token with JFrog ping
-        if curl -sS -f -H "Authorization: Bearer $TOKEN" \
-           "${{ inputs.oidc-provider-url }}/artifactory/api/system/ping" > /dev/null; then
-          echo "✅ Enhanced OIDC token verified successfully"
+        # Test authentication with JFrog ping
+        if [[ "${USE_CLI_AUTH:-}" == "true" ]]; then
+          echo "✅ Using JFrog CLI authentication (token not directly accessible)"
         else
-          echo "❌ Enhanced OIDC token verification failed"
-          exit 1
+          if curl -sS -f -H "Authorization: Bearer $TOKEN" \
+             "${{ inputs.oidc-provider-url }}/artifactory/api/system/ping" > /dev/null; then
+            echo "✅ Enhanced OIDC token verified successfully"
+          else
+            echo "❌ Enhanced OIDC token verification failed"
+            exit 1
+          fi
         fi
         
         # Extract Docker registry from JFrog URL if needed
@@ -133,29 +151,21 @@ runs:
         echo "🐳 Configuring Docker authentication..."
         echo "  • Registry: $DOCKER_REGISTRY"
         echo "  • Username: $DOCKER_USER"
-        echo "  • Token: ${TOKEN:0:10}... (truncated for security)"
         
-        # Perform Docker login (non-interactive)
-        if ! echo "$TOKEN" | docker login "$DOCKER_REGISTRY" -u "$DOCKER_USER" --password-stdin 2>/dev/null; then
-          echo "⚠️ Standard Docker login failed, trying alternative approach..."
-          # Alternative approach: use docker config directly
-          mkdir -p ~/.docker
-          DOCKER_AUTH=$(echo -n "${DOCKER_USER}:${TOKEN}" | base64 -w 0)
-          cat > ~/.docker/config.json << 'DOCKER_CONFIG_EOF'
-        {
-          "auths": {
-            "${DOCKER_REGISTRY}": {
-              "auth": "${DOCKER_AUTH}"
-            }
-          }
-        }
-        DOCKER_CONFIG_EOF
-          # Replace variables in the config file
-          sed -i "s/\${DOCKER_REGISTRY}/${DOCKER_REGISTRY}/g" ~/.docker/config.json
-          sed -i "s/\${DOCKER_AUTH}/${DOCKER_AUTH}/g" ~/.docker/config.json
-          echo "✅ Docker authentication configured via config file"
+        if [[ "${USE_CLI_AUTH:-}" == "true" ]]; then
+          echo "  • Method: JFrog CLI authentication (token not directly accessible)"
+          echo "✅ Docker authentication will be handled by JFrog CLI during build operations"
+          echo "📋 Note: Use 'jf docker' commands instead of direct 'docker' commands for authenticated operations"
         else
-          echo "✅ Docker authentication configured via login command"
+          echo "  • Token: ${TOKEN:0:10}... (truncated for security)"
+          
+          # Perform Docker login (non-interactive)
+          if echo "$TOKEN" | docker login "$DOCKER_REGISTRY" -u "$DOCKER_USER" --password-stdin 2>/dev/null; then
+            echo "✅ Docker authentication configured via login command"
+          else
+            echo "⚠️ Standard Docker login failed, but JFrog CLI authentication is available"
+            echo "📋 Note: Use 'jf docker' commands for authenticated Docker operations"
+          fi
         fi
         
         # Verify Docker authentication works
