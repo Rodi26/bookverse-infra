@@ -1,0 +1,22 @@
+{
+  "tool": "ArgoCD",
+  "status": "Synced",
+  "applicationKey": "${APPLICATION_KEY}",
+  "version": "${APP_VERSION}",
+  "environment": "PROD",
+  "revision": "${REVISION}",
+  "generatedAt": "${NOW_TS}",
+  "deployment": {
+    "deployedAt": "${DEPLOYED_AT}",
+    "syncStatus": "Synced",
+    "healthStatus": "Healthy",
+    "operationState": "Succeeded",
+    "replicasReady": "${REPLICAS_READY}/${REPLICAS_DESIRED}"
+  },
+  "verification": {
+    "healthChecks": "PASSED",
+    "readinessProbes": "PASSED",
+    "livenessProbes": "PASSED"
+  },
+  "attachStage": "PROD"
+}

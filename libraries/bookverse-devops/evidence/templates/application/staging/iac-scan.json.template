@@ -1,0 +1,22 @@
+{
+  "tool": "Snyk IaC",
+  "status": "PASSED",
+  "applicationKey": "${APPLICATION_KEY}",
+  "version": "${APP_VERSION}",
+  "environment": "STAGING",
+  "scanId": "${SCAN_ID}",
+  "generatedAt": "${NOW_TS}",
+  "findings": {
+    "critical": 0,
+    "high": ${HIGH_FINDINGS},
+    "medium": ${MEDIUM_FINDINGS},
+    "low": ${LOW_FINDINGS}
+  },
+  "scanDetails": {
+    "filesScanned": ${FILES_SCANNED},
+    "policiesEvaluated": ${POLICIES_EVALUATED},
+    "complianceScore": "${COMPLIANCE_SCORE}%"
+  },
+  "attachStage": "STAGING",
+  "gateForPromotionTo": "PROD"
+}

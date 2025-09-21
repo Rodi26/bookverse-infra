@@ -1,0 +1,21 @@
+{
+  "tool": "Postman API Tests",
+  "status": "PASSED",
+  "applicationKey": "${APPLICATION_KEY}",
+  "version": "${APP_VERSION}",
+  "environment": "QA",
+  "collectionId": "${COLLECTION_ID}",
+  "generatedAt": "${NOW_TS}",
+  "testResults": {
+    "totalAssertions": ${TOTAL_ASSERTIONS},
+    "passedAssertions": ${PASSED_ASSERTIONS},
+    "failedAssertions": 0,
+    "duration": "${TEST_DURATION}s",
+    "collections": {
+      "executed": ${COLLECTIONS_EXECUTED},
+      "passed": ${COLLECTIONS_PASSED}
+    }
+  },
+  "attachStage": "QA",
+  "gateForPromotionTo": "STAGING"
+}
