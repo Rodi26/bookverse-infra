@@ -106,23 +106,9 @@ jobs:
             echo "📝 Production note: Real systems would be more conservative here"
           fi
 
-  authenticate:
-    name: "Shared OIDC Authentication"
-    needs: analyze-commit
-    if: needs.analyze-commit.outputs.core_changed == 'true' || needs.analyze-commit.outputs.devops_changed == 'true' || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/shared-oidc-auth.yml
-    with:
-      service-name: "infra"
-      jfrog-url: ${{ vars.JFROG_URL }}
-      oidc-provider-name: "bookverse-infra-github"
-      oidc-audience: ${{ vars.JFROG_URL }}
-
   build-bookverse-core:
     name: "Build: bookverse-core"
-    needs: [analyze-commit, authenticate]
+    needs: [analyze-commit]
     if: needs.analyze-commit.outputs.core_changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
@@ -315,7 +301,7 @@ jobs:
 
   build-bookverse-devops:
     name: "Build: bookverse-devops"
-    needs: [analyze-commit, authenticate]
+    needs: [analyze-commit]
     if: needs.analyze-commit.outputs.devops_changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
