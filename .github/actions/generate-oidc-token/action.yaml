@@ -64,7 +64,7 @@ runs:
 
     - name: Use JFrog CLI for Base Authentication (OIDC)
       id: auth-token-generation
-      uses: jfrog/setup-jfrog-cli@v4
+      uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
       env:
         JF_URL: ${{ inputs.oidc-provider-url }}
       with:
