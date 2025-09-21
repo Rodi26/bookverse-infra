@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
-from __future__ import annotations
+"""Shared AppTrust rollback utility for BookVerse services.
 
-# Shared AppTrust rollback utility for BookVerse services
-# This script provides rollback functionality for AppTrust applications
+This script provides rollback functionality for AppTrust applications,
+including PROD stage rollback and intelligent tag management.
+
+Usage:
+    python apptrust_rollback.py --app <app-key> --version <version> [--dry-run]
+
+Requires:
+    - JFrog CLI setup with OIDC authentication (EyalDelarea/setup-jfrog-cli@swampUpAppTrust)
+    - JF_OIDC_TOKEN or JFROG_URL environment variables
+"""
+from __future__ import annotations
 
 import argparse
 import json
@@ -16,40 +25,29 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-# Import modern OIDC authentication utilities
-try:
-    import subprocess
-    import os
-    
-    def get_jfrog_token():
-        """Get JFrog token using modern OIDC authentication (EyalDelarea/setup-jfrog-cli@swampUpAppTrust)."""
-        try:
-            # Check if JF_OIDC_TOKEN is already available from JFrog CLI setup
-            token = os.environ.get('JF_OIDC_TOKEN')
-            if token:
-                return token
-                
-            # If not available, this script should be run in an environment where
-            # JFrog CLI has already been set up with the new OIDC pattern
-            print("Warning: JF_OIDC_TOKEN not found. Ensure JFrog CLI is set up with:")
-            print("  uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust")
-            return None
-        except Exception:
-            return None
-    
-    def get_apptrust_base_url():
-        """Get AppTrust base URL from environment."""
-        jfrog_url = os.environ.get('JFROG_URL', '').strip()
-        if jfrog_url:
-            return f"{jfrog_url.rstrip('/')}/apptrust/api/v1"
-        return os.environ.get('APPTRUST_BASE_URL', '').strip() or None
-    
-    ENHANCED_ENHANCED_OIDC_AVAILABLE = True
-except ImportError:
-    ENHANCED_ENHANCED_OIDC_AVAILABLE = False
-    ENHANCED_ENHANCED_OIDC_AVAILABLE = True
-except ImportError:
-    ENHANCED_ENHANCED_OIDC_AVAILABLE = False
+# OIDC authentication utilities
+def get_jfrog_token() -> Optional[str]:
+    """Get JFrog token using modern OIDC authentication (EyalDelarea/setup-jfrog-cli@swampUpAppTrust)."""
+    try:
+        # Check if JF_OIDC_TOKEN is already available from JFrog CLI setup
+        token = os.environ.get('JF_OIDC_TOKEN')
+        if token:
+            return token
+            
+        # If not available, this script should be run in an environment where
+        # JFrog CLI has already been set up with the new OIDC pattern
+        print("Warning: JF_OIDC_TOKEN not found. Ensure JFrog CLI is set up with:")
+        print("  uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust")
+        return None
+    except Exception:
+        return None
+
+def get_apptrust_base_url() -> Optional[str]:
+    """Get AppTrust base URL from environment."""
+    jfrog_url = os.environ.get('JFROG_URL', '').strip()
+    if jfrog_url:
+        return f"{jfrog_url.rstrip('/')}/apptrust/api/v1"
+    return os.environ.get('APPTRUST_BASE_URL', '').strip() or None
 
 SEMVER_RE = re.compile(
     r"^\s*v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
@@ -118,7 +116,20 @@ def sort_versions_by_semver_desc(version_strings: List[str]) -> List[str]:
     return [v for _, v in parsed]
 
 class AppTrustClient:
+    """Client for interacting with JFrog AppTrust API.
+    
+    This client provides methods for managing application versions,
+    including rollback operations and tag management.
+    """
+    
     def __init__(self, base_url: str, token: str, timeout_seconds: int = 30) -> None:
+        """Initialize the AppTrust client.
+        
+        Args:
+            base_url: Base URL for the AppTrust API
+            token: Authentication token (OIDC or access token)
+            timeout_seconds: Request timeout in seconds
+        """
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.timeout_seconds = timeout_seconds
@@ -159,12 +170,15 @@ class AppTrustClient:
         return self._request("PATCH", path, body=body)
 
     def rollback_application_version(self, app_key: str, version: str, from_stage: str = "PROD") -> Dict[str, Any]:
-        """Rollback an application version from the specified stage using JFrog AppTrust rollback API
+        """Rollback an application version from the specified stage using JFrog AppTrust rollback API.
         
         Args:
             app_key: Application key
             version: Version to rollback
             from_stage: Stage to rollback from (default: PROD for safety)
+            
+        Returns:
+            Dict containing the API response
         """
         path = f"/applications/{urllib.parse.quote(app_key)}/versions/{urllib.parse.quote(version)}/rollback"
         body = {"from_stage": from_stage}
@@ -178,6 +192,15 @@ BACKUP_BEFORE_LATEST = "original_tag_before_latest"
 BACKUP_BEFORE_QUARANTINE = "original_tag_before_quarantine"
 
 def get_prod_versions(client: AppTrustClient, app_key: str) -> List[Dict[str, Any]]:
+    """Get all application versions that have RELEASED or TRUSTED_RELEASE status.
+    
+    Args:
+        client: AppTrust API client
+        app_key: Application key
+        
+    Returns:
+        List of version dictionaries sorted by SemVer in descending order
+    """
     resp = client.list_application_versions(app_key)
     versions = resp.get("versions", [])
     norm: List[Dict[str, Any]] = []
@@ -194,6 +217,15 @@ def get_prod_versions(client: AppTrustClient, app_key: str) -> List[Dict[str, An
     return norm
 
 def pick_next_latest(sorted_prod_versions: List[Dict[str, Any]], exclude_version: str) -> Optional[Dict[str, Any]]:
+    """Find the next best candidate for the 'latest' tag.
+    
+    Args:
+        sorted_prod_versions: List of PROD versions sorted by SemVer descending
+        exclude_version: Version to exclude from consideration
+        
+    Returns:
+        The next best version dictionary, or None if no suitable candidate found
+    """
     dup: Dict[str, List[Dict[str, Any]]] = {}
     for v in sorted_prod_versions:
         if v["version"] == exclude_version:
@@ -221,6 +253,17 @@ def pick_next_latest(sorted_prod_versions: List[Dict[str, Any]], exclude_version
     return None
 
 def backup_tag_then_patch(client: AppTrustClient, app_key: str, version: str, backup_prop_key: str, new_tag: str, current_tag: str, dry_run: bool) -> None:
+    """Backup the current tag as a property and assign a new tag.
+    
+    Args:
+        client: AppTrust API client
+        app_key: Application key
+        version: Version to update
+        backup_prop_key: Property key to store the original tag
+        new_tag: New tag to assign
+        current_tag: Current tag to backup
+        dry_run: If True, only log intended changes
+    """
     props = {backup_prop_key: [current_tag]}
     if dry_run:
         print(f"[DRY-RUN] PATCH backup+tag: app={app_key} version={version} props={props} tag={new_tag}")
@@ -228,6 +271,19 @@ def backup_tag_then_patch(client: AppTrustClient, app_key: str, version: str, ba
     client.patch_application_version(app_key, version, tag=new_tag, properties=props)
 
 def rollback_in_prod(client: AppTrustClient, app_key: str, target_version: str, dry_run: bool = False) -> None:
+    """Perform a complete rollback operation for an application version in PROD.
+    
+    This function:
+    1. Calls the AppTrust rollback API to rollback from PROD stage
+    2. Tags the target version with 'quarantine'
+    3. Reassigns 'latest' tag to the next highest version if needed
+    
+    Args:
+        client: AppTrust API client
+        app_key: Application key
+        target_version: Version to rollback
+        dry_run: If True, only log intended changes without making them
+    """
     prod_versions = get_prod_versions(client, app_key)
     by_version = {v["version"]: v for v in prod_versions}
     target = by_version.get(target_version)
@@ -272,11 +328,10 @@ def _env(name: str, default: Optional[str] = None) -> Optional[str]:
 
 def get_auth_token() -> Optional[str]:
     """Get authentication token using OIDC-first approach with fallback."""
-    if ENHANCED_ENHANCED_OIDC_AVAILABLE:
-        # Try OIDC authentication first
-        token = get_jfrog_token()
-        if token:
-            return token
+    # Try OIDC authentication first
+    token = get_jfrog_token()
+    if token:
+        return token
     
     # Fall back to environment variables
     token = _env("JF_OIDC_TOKEN")
@@ -288,16 +343,20 @@ def get_auth_token() -> Optional[str]:
 
 def get_base_url() -> Optional[str]:
     """Get AppTrust base URL using OIDC-aware approach with fallback."""
-    if ENHANCED_ENHANCED_OIDC_AVAILABLE:
-        # Try OIDC-aware URL detection
-        url = get_apptrust_base_url()
-        if url:
-            return url
+    # Try OIDC-aware URL detection
+    url = get_apptrust_base_url()
+    if url:
+        return url
     
     # Fall back to environment variable
     return _env("APPTRUST_BASE_URL")
 
 def main() -> int:
+    """Main entry point for the AppTrust rollback utility.
+    
+    Returns:
+        Exit code: 0 for success, 1 for errors, 2 for missing configuration
+    """
     parser = argparse.ArgumentParser(description="AppTrust PROD rollback utility")
     parser.add_argument("--app", required=True, help="Application key")
     parser.add_argument("--version", required=True, help="Target version to rollback (SemVer)")
@@ -318,8 +377,7 @@ def main() -> int:
     if not token:
         print("Missing authentication token", file=sys.stderr)
         print("Tried: JF_OIDC_TOKEN, OIDC auto-detection", file=sys.stderr)
-        if not ENHANCED_ENHANCED_OIDC_AVAILABLE:
-            print("Note: OIDC authentication library not available", file=sys.stderr)
+        print("Ensure JFrog CLI is set up with: uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust", file=sys.stderr)
         return 2
 
     client = AppTrustClient(base_url, token)
@@ -336,5 +394,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
