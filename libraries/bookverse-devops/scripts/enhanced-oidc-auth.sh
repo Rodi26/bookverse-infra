@@ -141,26 +141,19 @@ build_enhanced_payload() {
   local application_key="$4"
   local project_key="$5"
   
-  log_debug "Building enhanced token payload with metadata"
+  log_debug "Building JFrog-compatible token payload with metadata"
   
-  # Build comprehensive metadata payload
+  # Build JFrog-compatible payload with only supported metadata fields
+  # Based on working examples from promote.reusable.yml and other workflows
   jq -n \
     --arg jwt "$github_token" \
     --arg provider_name "bookverse-${service_name}-github" \
     --arg project_key "$project_key" \
     --arg job_id "${GITHUB_JOB:-unknown}" \
     --arg run_id "${GITHUB_RUN_ID:-unknown}" \
-    --arg run_number "${GITHUB_RUN_NUMBER:-unknown}" \
-    --arg repo "${GITHUB_SERVER_URL:-}/${GITHUB_REPOSITORY:-}" \
+    --arg repo "${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-unknown}" \
     --arg revision "${GITHUB_SHA:-unknown}" \
     --arg branch "${GITHUB_REF_NAME:-unknown}" \
-    --arg workflow "${GITHUB_WORKFLOW:-unknown}" \
-    --arg actor "${GITHUB_ACTOR:-unknown}" \
-    --arg event_name "${GITHUB_EVENT_NAME:-unknown}" \
-    --arg application_key "$application_key" \
-    --arg service_name "$service_name" \
-    --arg version "$version" \
-    --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{
       "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
       "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
@@ -169,18 +162,9 @@ build_enhanced_payload() {
       "project_key": $project_key,
       "job_id": $job_id,
       "run_id": $run_id,
-      "run_number": $run_number,
       "repo": $repo,
       "revision": $revision,
-      "branch": $branch,
-      "workflow": $workflow,
-      "actor": $actor,
-      "event_name": $event_name,
-      "application_key": $application_key,
-      "service_name": $service_name,
-      "version": $version,
-      "timestamp": $timestamp,
-      "bookverse_enhanced": true
+      "branch": $branch
     }'
 }
 
