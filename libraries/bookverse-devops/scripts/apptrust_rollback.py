@@ -16,24 +16,23 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-# Import enhanced OIDC authentication utilities (same directory)
-try:
-# Import enhanced OIDC authentication utilities
+# Import modern OIDC authentication utilities
 try:
     import subprocess
     import os
     
     def get_jfrog_token():
-        """Get JFrog token using enhanced OIDC authentication."""
+        """Get JFrog token using modern OIDC authentication (EyalDelarea/setup-jfrog-cli@swampUpAppTrust)."""
         try:
-            result = subprocess.run([
-                'bash', '-c', 
-                'source bookverse-infra/libraries/bookverse-devops/scripts/enhanced-oidc-auth.sh && generate_enhanced_oidc_token "/Users/yonatanp/playground/AppTrust-BookVerse/bookverse-infra/libraries/bookverse-devops/scripts/apptrust_rollback.py" "shared"',
-                '_', 'shared', 'latest'
-            ], capture_output=True, text=True, env=os.environ)
-            
-            if result.returncode == 0:
-                return os.environ.get('JF_OIDC_TOKEN')
+            # Check if JF_OIDC_TOKEN is already available from JFrog CLI setup
+            token = os.environ.get('JF_OIDC_TOKEN')
+            if token:
+                return token
+                
+            # If not available, this script should be run in an environment where
+            # JFrog CLI has already been set up with the new OIDC pattern
+            print("Warning: JF_OIDC_TOKEN not found. Ensure JFrog CLI is set up with:")
+            print("  uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust")
             return None
         except Exception:
             return None
