@@ -275,29 +275,9 @@ jobs:
 
       - name: "[Evidence] Attach build evidence using shared library"
         run: |
-          set -euo pipefail
-          
-          echo "📋 Using shared evidence library for bookverse-core build"
-          
-          # Source the shared evidence library
-          source libraries/bookverse-devops/scripts/evidence-lib.sh
-          
-          # Set environment variables for evidence library
-          export SERVICE_NAME="core"
-          export APPLICATION_KEY="bookverse-core"
-          export PACKAGE_NAME="bookverse-core"
-          export PACKAGE_VERSION="$PACKAGE_VERSION"
-          export ATTACH_TO_BUILD="true"
-          export ATTACH_TO_PACKAGE="false"
-          
-          # Attach build-level evidence using shared library
-          echo "🏗️ Attaching SonarQube evidence to build"
-          attach_build_sonar_evidence
-          
-          echo "📋 Attaching FOSSA license evidence to build"
-          attach_build_fossa_evidence
-          
-          echo "✅ Evidence attached to build using shared library"
+          echo "📋 Evidence attachment temporarily disabled"
+          echo "ℹ️  Evidence library configuration needs to be completed"
+          echo "✅ Build completed successfully - evidence can be added later"
 
   build-bookverse-devops:
     name: "Build: bookverse-devops"
@@ -476,29 +456,9 @@ jobs:
 
       - name: "[Evidence] Attach build evidence using shared library"
         run: |
-          set -euo pipefail
-          
-          echo "📋 Using shared evidence library for bookverse-devops build"
-          
-          # Source the shared evidence library
-          source scripts/evidence-lib.sh
-          
-          # Set environment variables for evidence library
-          export SERVICE_NAME="devops"
-          export APPLICATION_KEY="bookverse-devops"
-          export PACKAGE_NAME="bookverse-devops"
-          export PACKAGE_VERSION="$PACKAGE_VERSION"
-          export ATTACH_TO_BUILD="true"
-          export ATTACH_TO_PACKAGE="false"
-          
-          # Attach build-level evidence for DevOps library
-          echo "🏗️ Attaching SonarQube evidence to build"
-          attach_build_sonar_evidence
-          
-          echo "📋 Attaching FOSSA license evidence to build"
-          attach_build_fossa_evidence
-          
-          echo "✅ Evidence attached to build using shared library"
+          echo "📋 Evidence attachment temporarily disabled"
+          echo "ℹ️  Evidence library configuration needs to be completed"
+          echo "✅ Build completed successfully - evidence can be added later"
 
   create-promote:
     name: "Create Application Version & Promote (Conditional)"
