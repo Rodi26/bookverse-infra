@@ -92,10 +92,10 @@ jobs:
           echo "📤 Publishing bookverse-core package to JFrog Artifactory"
           
           # Configure pip for JFrog
-          jf pip-config --repo-resolve="${{ vars.PROJECT_KEY }}-python-virtual" --repo-deploy="${{ vars.PROJECT_KEY }}-core-python-internal-local"
+          jf pip-config --repo-resolve="${{ vars.PROJECT_KEY }}-pypi-virtual" --repo-deploy="${{ vars.PROJECT_KEY }}-core-internal-python-nonprod-local"
           
           # Upload the wheel package
-          jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-core-python-internal-local/" --flat=false
+          jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-core-internal-python-nonprod-local/" --flat=false
           
           echo "✅ bookverse-core package published successfully"
           echo "📋 Services can now install with: pip install bookverse-core"
