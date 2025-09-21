@@ -122,7 +122,7 @@ class AppTrustClient:
     including rollback operations and tag management.
     """
     
-    def __init__(self, base_url: str, token: str, timeout_seconds: int = 30) -> None:
+    def __init__(self, base_url: str, token: str, timeout_seconds: int = 600) -> None:  # 10 minutes for platform operations
         """Initialize the AppTrust client.
         
         Args:
