@@ -114,6 +114,9 @@ runs:
         echo "username=$DOCKER_USER" >> $GITHUB_OUTPUT
         
         [[ "$DEBUG" == "true" ]] && echo "✅ Docker registry authentication completed successfully"
+        
+        # Ensure clean exit
+        exit 0
 
 branding:
   icon: 'lock'
