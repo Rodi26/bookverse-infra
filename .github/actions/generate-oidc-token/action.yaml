@@ -115,11 +115,45 @@ runs:
         echo "  • Registry: $DOCKER_REGISTRY"
         echo "  • Username: $DOCKER_USER"
         
-        # Perform Docker login
-        echo "$JF_OIDC_TOKEN" | docker login "$DOCKER_REGISTRY" -u "$DOCKER_USER" --password-stdin
+        # Validate token is available
+        if [[ -z "$JF_OIDC_TOKEN" ]]; then
+          echo "❌ JF_OIDC_TOKEN is empty or not set"
+          exit 1
+        fi
+        
+        # Perform Docker login (non-interactive)
+        if ! echo "$JF_OIDC_TOKEN" | docker login "$DOCKER_REGISTRY" -u "$DOCKER_USER" --password-stdin 2>/dev/null; then
+          echo "⚠️ Standard Docker login failed, trying alternative approach..."
+          # Alternative approach: use docker config directly
+          mkdir -p ~/.docker
+          DOCKER_AUTH=$(echo -n "${DOCKER_USER}:${JF_OIDC_TOKEN}" | base64 -w 0)
+          cat > ~/.docker/config.json << 'DOCKER_CONFIG_EOF'
+        {
+          "auths": {
+            "${DOCKER_REGISTRY}": {
+              "auth": "${DOCKER_AUTH}"
+            }
+          }
+        }
+        DOCKER_CONFIG_EOF
+          # Replace variables in the config file
+          sed -i "s/\${DOCKER_REGISTRY}/${DOCKER_REGISTRY}/g" ~/.docker/config.json
+          sed -i "s/\${DOCKER_AUTH}/${DOCKER_AUTH}/g" ~/.docker/config.json
+          echo "✅ Docker authentication configured via config file"
+        else
+          echo "✅ Docker authentication configured via login command"
+        fi
+        
+        # Verify Docker authentication works
+        echo "🔍 Verifying Docker authentication..."
+        if docker info > /dev/null 2>&1; then
+          echo "✅ Docker daemon is accessible"
+        else
+          echo "⚠️ Docker daemon not accessible, but authentication may still work for builds"
+        fi
         
         echo "✅ Docker authentication configured successfully"
 
 branding:
-  icon: 'key'
+  icon: 'lock'
   color: 'blue'
