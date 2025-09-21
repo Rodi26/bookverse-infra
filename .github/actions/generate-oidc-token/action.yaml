@@ -161,7 +161,7 @@ runs:
           echo "enhanced-token=$ENHANCED_TOKEN" >> "$GITHUB_OUTPUT"
           
           # Create token metadata
-          TOKEN_METADATA=$(jq -n \
+          TOKEN_METADATA=$(jq -c -n \
             --arg service "${{ inputs.service-name }}" \
             --arg version "${{ inputs.version }}" \
             --arg application "${{ inputs.application-key }}" \
