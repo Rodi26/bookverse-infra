@@ -95,7 +95,7 @@ jobs:
           jf pip-config --repo-resolve="${{ vars.PROJECT_KEY }}-python-virtual" --repo-deploy="${{ vars.PROJECT_KEY }}-core-python-internal-local"
           
           # Upload the wheel package
-          jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-core-python-internal-local/bookverse-core/" --flat=false
+          jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-core-python-internal-local/" --flat=false
           
           echo "✅ bookverse-core package published successfully"
           echo "📋 Services can now install with: pip install bookverse-core"
