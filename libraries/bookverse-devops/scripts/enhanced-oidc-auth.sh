@@ -173,6 +173,7 @@ exchange_for_jfrog_token() {
   local jfrog_url="$2"
   
   log_debug "Exchanging GitHub token for enhanced JFrog access token"
+  log_debug "Payload being sent: $payload"
   
   local temp_response
   temp_response=$(mktemp)
@@ -351,6 +352,43 @@ generate_enhanced_oidc_token() {
   
   log_info "Generating enhanced OIDC token for $service_name"
   log_debug "Service: $service_name, Version: $version, Application: $application_key, Project: $project_key"
+  
+  # Check if we already have a working JF_OIDC_TOKEN from JFrog CLI
+  if [[ -n "${JF_OIDC_TOKEN:-}" ]]; then
+    log_info "Found existing JF_OIDC_TOKEN from JFrog CLI, verifying it works..."
+    log_debug "Token length: ${#JF_OIDC_TOKEN}"
+    
+    # Test the token with a simple API call
+    if curl -sS -f -H "Authorization: Bearer $JF_OIDC_TOKEN" \
+       "$JFROG_URL/artifactory/api/system/ping" >/dev/null 2>&1; then
+      log_success "Existing JF_OIDC_TOKEN is valid, reusing it for enhanced OIDC script"
+      
+      # Set up environment variables as if we generated the token
+      echo "JF_OIDC_TOKEN=$JF_OIDC_TOKEN" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
+      
+      # Set version-specific token if needed
+      if [[ "$version" != "latest" ]]; then
+        local version_var="JF_OIDC_TOKEN_${version//[.-]/_}"
+        export "$version_var"="$JF_OIDC_TOKEN"
+        echo "$version_var=$JF_OIDC_TOKEN" >> "${GITHUB_ENV:-/dev/null}" 2>/dev/null || true
+        log_debug "Version-specific token set: $version_var"
+      fi
+      
+      # Set GitHub Actions output if available
+      if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "enhanced-oidc-token=$JF_OIDC_TOKEN" >> "$GITHUB_OUTPUT"
+        echo "token-service=$service_name" >> "$GITHUB_OUTPUT"
+        echo "token-version=$version" >> "$GITHUB_OUTPUT"
+      fi
+      
+      return 0
+    else
+      log_warning "Existing JF_OIDC_TOKEN failed verification, will generate new one"
+      log_debug "Token verification failed for: ${JF_OIDC_TOKEN:0:50}..."
+    fi
+  else
+    log_info "No existing JF_OIDC_TOKEN found, will generate new one"
+  fi
   
   # Check for cached token first
   local cached_token
