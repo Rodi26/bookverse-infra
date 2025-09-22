@@ -603,6 +603,25 @@ jobs:
           APP_KEY="$APPLICATION_KEY"
           APP_VERSION="${{ env.APP_VERSION }}"
           
+          # Preflight: ensure the application exists; create if 404 (matching service pattern)
+          echo "🔍 Preflight: ensuring application '$APP_KEY' exists"
+          APP_GET_CODE=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/applications/$APP_KEY" \
+            -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "X-JFrog-Project: ${{ vars.PROJECT_KEY }}" -H "Accept: application/json")
+          if [[ "$APP_GET_CODE" == "404" ]]; then
+            echo "🆕 Application not found; creating it"
+            CREATE_APP_BODY=$(jq -n --arg name "BookVerse Infrastructure" --arg key "$APP_KEY" --arg proj "${{ vars.PROJECT_KEY }}" '{application_name:$name, application_key:$key, project_key:$proj}')
+            APP_CREATE_CODE=$(curl -s -o /tmp/app_create.json -w '%{http_code}' -X POST "$BASE/applications/" \
+              -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "X-JFrog-Project: ${{ vars.PROJECT_KEY }}" -H "Content-Type: application/json" -H "Accept: application/json" \
+              -d "$CREATE_APP_BODY")
+            echo "📨 Create Application Response:"; cat /tmp/app_create.json || true
+            if [[ "$APP_CREATE_CODE" -lt 200 || "$APP_CREATE_CODE" -ge 300 ]]; then
+              echo "❌ Failed to create application (HTTP $APP_CREATE_CODE)"; exit 1
+            fi
+            echo "✅ Application '$APP_KEY' created successfully"
+          else
+            echo "✅ Application '$APP_KEY' already exists"
+          fi
+          
           TAG_OPTIONS=(release hotfix feature bugfix enhancement security performance refactor)
           TAG_INDEX=$((${GITHUB_RUN_NUMBER:-0} % ${#TAG_OPTIONS[@]}))
           APP_TAG="${TAG_OPTIONS[$TAG_INDEX]}"
