@@ -185,11 +185,19 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                     if isinstance(tag, str) and parse_semver(tag):
                         existing_versions.append(tag)
         except Exception as e:
-            # FAIL FAST: Don't mask authentication or connectivity issues
-            print(f"ERROR: Docker registry query failed for {package_name}: {e}", file=sys.stderr)
-            print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
-            print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
-            sys.exit(1)
+            # Check if this is a "package not found" error (expected for first builds)
+            error_str = str(e)
+            if "404" in error_str or "NAME_UNKNOWN" in error_str:
+                # Package doesn't exist yet - this is expected for first builds
+                print(f"INFO: Package '{package_name}' not found in Docker registry (first build)", file=sys.stderr)
+                print(f"INFO: Will use seed version from version-map.yaml", file=sys.stderr)
+                # Continue with empty existing_versions list to use seed
+            else:
+                # FAIL FAST: Real authentication or connectivity issues
+                print(f"ERROR: Docker registry query failed for {package_name}: {e}", file=sys.stderr)
+                print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
+                print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
+                sys.exit(1)
     
     elif package_type == "generic":
         # For generic packages, try to query via AQL to find existing versions
