@@ -620,7 +620,8 @@ jobs:
             SOURCES=$(echo "$SOURCES" | jq ". + [$DEVOPS_SOURCE]")
           fi
           
-          APP_VERSION_PAYLOAD='{"version":"'$APP_VERSION'","tag":"'$APP_TAG'","sources":{"builds":'$(echo "$SOURCES" | jq -c .)'}}'"
+          SOURCES_JSON=$(echo "$SOURCES" | jq -c .)
+          APP_VERSION_PAYLOAD='{"version":"'$APP_VERSION'","tag":"'$APP_TAG'","sources":{"builds":'$SOURCES_JSON'}}'
           
           echo "📋 Creating application version with payload:"
           echo "$APP_VERSION_PAYLOAD" | jq . || echo "$APP_VERSION_PAYLOAD"
