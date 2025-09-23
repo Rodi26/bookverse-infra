@@ -125,7 +125,25 @@ remove_tag() {
     fi
 }
 
+normalize_app_key_for_tags() {
+    local app_key="$1"
+    # Handle double prefix: bookverse-bookverse-service -> bookverse-service
+    if [[ "$app_key" =~ ^bookverse-bookverse-(.+)$ ]]; then
+        echo "bookverse-${BASH_REMATCH[1]}"
+    else
+        echo "$app_key"
+    fi
+}
+
 validate_and_heal_tags() {
+    # Normalize APPLICATION_KEY to prevent double prefix issues
+    local original_key="${APPLICATION_KEY:-}"
+    APPLICATION_KEY=$(normalize_app_key_for_tags "$APPLICATION_KEY")
+    
+    if [[ "$original_key" != "$APPLICATION_KEY" ]]; then
+        log_info "🔧 Normalized APPLICATION_KEY: $original_key -> $APPLICATION_KEY"
+    fi
+
     log_info "🏥 Starting self-healing tag management for $APPLICATION_KEY..."
     
     if [[ -z "${APPLICATION_KEY:-}" ]]; then
