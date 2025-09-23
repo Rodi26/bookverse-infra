@@ -379,6 +379,35 @@ def get_base_url() -> Optional[str]:
     
     return _env("APPTRUST_BASE_URL")
 
+def normalize_app_key(app_key: str) -> str:
+    """
+    Normalize application key to prevent double prefix issues.
+    
+    This function handles cases where workflows might pass 'bookverse-bookverse-service'
+    instead of 'bookverse-service' due to repository name extraction logic.
+    
+    Args:
+        app_key: Raw application key from command line
+        
+    Returns:
+        Normalized application key with single 'bookverse-' prefix
+        
+    Examples:
+        >>> normalize_app_key("bookverse-bookverse-inventory")
+        'bookverse-inventory'
+        >>> normalize_app_key("bookverse-inventory") 
+        'bookverse-inventory'
+        >>> normalize_app_key("other-app")
+        'other-app'
+    """
+    # Handle double bookverse prefix: bookverse-bookverse-service -> bookverse-service
+    if app_key.startswith("bookverse-bookverse-"):
+        normalized = app_key.replace("bookverse-bookverse-", "bookverse-", 1)
+        print(f"🔧 Normalized application key: {app_key} -> {normalized}")
+        return normalized
+    
+    return app_key
+
 def main() -> int:
     
     parser = argparse.ArgumentParser(description="AppTrust PROD rollback utility")
@@ -388,6 +417,9 @@ def main() -> int:
     parser.add_argument("--token", default=None, help="Access token (env: JF_OIDC_TOKEN or OIDC auto-detection)")
     parser.add_argument("--dry-run", action="store_true", help="Log intended changes without mutating")
     args = parser.parse_args()
+    
+    # Normalize application key to handle double prefix issues
+    app_key = normalize_app_key(args.app)
 
     base_url = args.base_url or get_base_url()
     if not base_url:
@@ -406,7 +438,7 @@ def main() -> int:
 
     try:
         start = time.time()
-        rollback_in_prod(client, args.app, args.version, dry_run=args.dry_run)
+        rollback_in_prod(client, app_key, args.version, dry_run=args.dry_run)
         elapsed = time.time() - start
         print(f"Done in {elapsed:.2f}s")
         return 0
