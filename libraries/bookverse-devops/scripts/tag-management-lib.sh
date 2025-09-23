@@ -1,51 +1,42 @@
 #!/bin/bash
 
-# BookVerse Self-Healing Tag Management Library
-# Comprehensive tag management system for AppTrust applications
 
 set -euo pipefail
 
-# Color codes for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
-readonly NC='\033[0m' # No Color
+readonly NC='\033[0m'
 
-# Tag constants
 readonly TAG_LATEST="latest"
 readonly TAG_QUARANTINE="quarantine"
 readonly TAG_VALID="valid"
 
-# Logging functions
 log_info() { echo -e "${BLUE}ℹ️  $*${NC}"; }
 log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
 
-# Helper function: Check if version is valid SemVer
 is_valid_semver() {
     local version="$1"
-    # Regex for SemVer (major.minor.patch) with optional pre-release and build metadata
     if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
-        return 0  # true
+        return 0
     else
-        return 1  # false
+        return 1
     fi
 }
 
-# Helper function: Compare two SemVer versions (returns 0 if v1=v2, 1 if v1>v2, -1 if v1<v2)
 compare_semver() {
     local v1="$1"
     local v2="$2"
     
-    # Remove pre-release and build metadata for comparison
     local v1_clean=$(echo "$v1" | sed -E 's/(-.*|\+.*)//')
     local v2_clean=$(echo "$v2" | sed -E 's/(-.*|\+.*)//')
     
     if ! is_valid_semver "$v1_clean" || ! is_valid_semver "$v2_clean"; then
         log_error "Invalid SemVer format for comparison: $v1 or $v2"
-        return 2 # Indicate error
+        return 2
     fi
 
     local IFS=.
@@ -53,18 +44,17 @@ compare_semver() {
     read -ra vnum1 <<< "$v1_clean"
     read -ra vnum2 <<< "$v2_clean"
 
-    for ((i=0; i<${#vnum1[@]}; i++)); do
-        if (( 10#${vnum1[i]} > 10#${vnum2[i]} )); then
+    for ((i=0; i<${
+        if (( 10
             echo 1; return
         fi
-        if (( 10#${vnum1[i]} < 10#${vnum2[i]} )); then
+        if (( 10
             echo -1; return
         fi
     done
     echo 0; return
 }
 
-# Helper function: Get current tags for a version
 get_version_tags() {
     local version="$1"
     
@@ -80,7 +70,6 @@ get_version_tags() {
     echo "$resp" | jq -r '.tag // empty' 2>/dev/null || true
 }
 
-# Helper function: Add a tag to a version (using PATCH to update the version)
 add_tag() {
     local version="$1"
     local tag="$2"
@@ -109,11 +98,10 @@ add_tag() {
     fi
 }
 
-# Helper function: Remove a tag from a version by replacing it with 'valid'
 remove_tag() {
     local version="$1"
     local tag_to_remove="$2"
-    local replacement_tag="${3:-$TAG_VALID}"  # Default to 'valid' tag
+    local replacement_tag="${3:-$TAG_VALID}"
     
     if [[ -z "$JFROG_URL" || -z "$JF_OIDC_TOKEN" || -z "$APPLICATION_KEY" || -z "$version" || -z "$tag_to_remove" ]]; then
         log_error "Missing environment variables or parameters for remove_tag."
@@ -137,11 +125,9 @@ remove_tag() {
     fi
 }
 
-# Main function: Self-healing tag management system
 validate_and_heal_tags() {
     log_info "🏥 Starting self-healing tag management for $APPLICATION_KEY..."
     
-    # Validate required environment variables
     if [[ -z "${APPLICATION_KEY:-}" ]]; then
         log_error "APPLICATION_KEY environment variable is required"
         return 1
@@ -157,13 +143,11 @@ validate_and_heal_tags() {
         return 1
     fi
     
-    # STEP 2: Add simple API call to fetch versions
     log_info "Environment variables validated successfully:"
     log_info "  - APPLICATION_KEY: $APPLICATION_KEY"
     log_info "  - JFROG_URL: $JFROG_URL"
     log_info "  - JF_OIDC_TOKEN: [REDACTED]"
     
-    # Test basic API connectivity and fetch more versions for comprehensive tag checking
     local api_url="${JFROG_URL%/}/apptrust/api/v1/applications/$APPLICATION_KEY/versions?limit=50&order_by=created&order_asc=false"
     log_info "🌐 Testing API call: $api_url"
     
@@ -181,11 +165,9 @@ validate_and_heal_tags() {
         local version_count=$(jq -r '.versions | length' "$temp_file" 2>/dev/null || echo "0")
         log_success "✅ API call successful! Found $version_count versions for comprehensive tag checking"
         
-        # Log first few versions for verification
         log_info "📋 Recent versions:"
         jq -r '.versions[0:3] | .[] | "  - \(.version) (\(.release_status))"' "$temp_file" 2>/dev/null || log_warning "Could not parse version details"
         
-        # Identify latest SemVer candidate
         log_info "🔍 Identifying latest SemVer candidate..."
         
         local latest_candidate=""
@@ -212,19 +194,15 @@ validate_and_heal_tags() {
             if [[ -n "$latest_candidate" ]]; then
                 log_success "🎯 Latest SemVer candidate: $latest_candidate"
                 
-                # Perform comprehensive tag operations
                 log_info "🏷️ Performing comprehensive tag operations..."
                 
-                # Small delay to ensure version is fully available for tagging
                 log_info "⏳ Ensuring version is ready for tag operations..."
                 sleep 3
                 
-                # Check current tags using the versions list data (more efficient)
                 log_info "🔍 Analyzing tags from versions list data..."
                 local has_latest_tag=false
                 local incorrect_latest_versions=""
                 
-                # Parse the versions data to check tags
                 while IFS= read -r version_json; do
                     if [[ -z "$version_json" ]]; then continue; fi
                     
@@ -232,7 +210,6 @@ validate_and_heal_tags() {
                     local release_status=$(echo "$version_json" | jq -r '.release_status // empty')
                     local current_tag=$(echo "$version_json" | jq -r '.tag // empty')
                     
-                    # Only check PROD versions
                     if [[ "$release_status" != "RELEASED" && "$release_status" != "TRUSTED_RELEASE" ]]; then
                         continue
                     fi
@@ -240,7 +217,6 @@ validate_and_heal_tags() {
                     log_info "🔍 Version $version (${release_status}) current tag: '$current_tag'"
                     
                     if [[ "$version" == "$latest_candidate" ]]; then
-                        # Check if latest candidate has the latest tag
                         if [[ "$current_tag" == "$TAG_LATEST" ]]; then
                             has_latest_tag=true
                             log_info "✅ Version $latest_candidate already has '$TAG_LATEST' tag"
@@ -248,7 +224,6 @@ validate_and_heal_tags() {
                             log_info "❌ Version $latest_candidate missing '$TAG_LATEST' tag (current: '$current_tag')"
                         fi
                     else
-                        # Check if other versions incorrectly have the latest tag
                         if [[ "$current_tag" == "$TAG_LATEST" ]]; then
                             log_warning "⚠️ Version $version incorrectly has '$TAG_LATEST' tag"
                             incorrect_latest_versions="$incorrect_latest_versions $version"
@@ -256,17 +231,14 @@ validate_and_heal_tags() {
                     fi
                 done < <(jq -c '.versions[]' "$temp_file" 2>/dev/null || echo "")
                 
-                # Perform tag operations
                 local changes_made=0
                 
-                # Remove 'latest' tag from incorrect versions (replace with 'valid')
                 for version in $incorrect_latest_versions; do
                     if remove_tag "$version" "$TAG_LATEST" "$TAG_VALID"; then
                         changes_made=$((changes_made + 1))
                     fi
                 done
                 
-                # Add 'latest' tag to correct version if missing
                 if [[ "$has_latest_tag" == false ]]; then
                     if add_tag "$latest_candidate" "$TAG_LATEST"; then
                         changes_made=$((changes_made + 1))
@@ -296,7 +268,6 @@ validate_and_heal_tags() {
     return 0
 }
 
-# Convenience function for backward compatibility
 enforce_latest_tag() {
     local current_version="${1:-$APP_VERSION}"
     
@@ -307,13 +278,11 @@ enforce_latest_tag() {
     
     log_info "🏷️ MINIMAL enforce_latest_tag for version $current_version..."
     
-    # Run minimal tag validation
     validate_and_heal_tags
     
     log_info "✅ MINIMAL enforcement completed (no actual operations)"
 }
 
-# Export functions for use in other scripts
 export -f validate_and_heal_tags
 export -f enforce_latest_tag
 

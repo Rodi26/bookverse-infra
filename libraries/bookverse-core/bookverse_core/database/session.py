@@ -1,17 +1,50 @@
 """
-Database session management for BookVerse Demo Services.
+BookVerse Core Library - Database Session Management
 
-DEMO PURPOSE: This module demonstrates how to standardize database session management.
-Instead of each service implementing its own database setup (like inventory's database.py
-and checkout's database.py), all services can use this shared implementation.
+This module provides comprehensive database session management for the BookVerse
+platform, implementing enterprise-grade SQLAlchemy integration with connection
+pooling, session lifecycle management, and transactional patterns for reliable
+database operations across all BookVerse microservices.
 
-Key Demo Benefits:
-- Consistent database session handling across all services
-- Standardized database configuration and connection management
-- Reusable FastAPI dependency for database sessions
-- Single place to update database connection logic
+🏗️ Architecture Overview:
+    - Session Factory Pattern: Centralized session creation and management
+    - Connection Pooling: Efficient database connection management with pooling
+    - Transactional Patterns: Context manager patterns for safe transaction handling
+    - Configuration Management: Type-safe database configuration with validation
+    - Lifecycle Management: Proper session cleanup and resource management
+    - Error Handling: Comprehensive error handling with automatic rollback
 
-Focus: Essential session management patterns that all services need.
+🚀 Key Features:
+    - SQLAlchemy integration with enterprise-grade session management
+    - Connection pooling for optimal database performance and resource utilization
+    - Context manager patterns for safe transactional operations
+    - Type-safe database configuration with Pydantic validation
+    - Automatic session cleanup and proper resource management
+    - Comprehensive error handling with transaction rollback
+
+🔧 Technical Implementation:
+    - SQLAlchemy Engine: Database engine creation with connection pooling
+    - Session Factory: Centralized session creation with proper configuration
+    - Context Managers: Safe transaction handling with automatic cleanup
+    - Configuration Model: Type-safe database configuration with validation
+    - Resource Management: Proper connection and session lifecycle management
+
+📊 Business Logic:
+    - Data Consistency: Transactional patterns ensuring data integrity
+    - Performance Optimization: Connection pooling for efficient resource utilization
+    - Operational Reliability: Proper error handling and resource cleanup
+    - Scalability Support: Connection pooling for high-concurrency applications
+    - Development Efficiency: Simplified database access patterns
+
+🛠️ Usage Patterns:
+    - Microservice Integration: Database session management for all services
+    - Transactional Operations: Safe database operations with automatic rollback
+    - Connection Management: Efficient database connection pooling and lifecycle
+    - Development Workflows: Simplified database access for rapid development
+    - Production Deployment: Enterprise-grade database session management
+
+Authors: BookVerse Platform Team
+Version: 1.0.0
 """
 
 import logging
@@ -27,50 +60,95 @@ logger = logging.getLogger(__name__)
 
 class DatabaseConfig(BaseModel):
     """
-    Database configuration for demo services.
+    Database configuration model with type-safe validation.
     
-    DEMO PURPOSE: Provides a simple, consistent way to configure database connections
-    across all services, replacing the various approaches currently used.
+    This model provides comprehensive database configuration for BookVerse
+    services with automatic environment variable loading, connection pooling
+    configuration, and production-ready defaults for SQLAlchemy integration.
+    
+    Attributes:
+        database_url (str): Database connection URL (required)
+        echo (bool): Enable SQLAlchemy query logging for debugging
+        pool_size (int): Number of connections to maintain in the pool
+        max_overflow (int): Maximum number of connections beyond pool_size
+        
+    Environment Variables:
+        - DB_DATABASE_URL: Database connection URL
+        - DB_ECHO: Enable query logging (true/false)
+        - DB_POOL_SIZE: Connection pool size (integer)
+        - DB_MAX_OVERFLOW: Maximum overflow connections (integer)
+        
+    Examples:
+        >>> # Production configuration
+        >>> config = DatabaseConfig(
+        ...     database_url="postgresql://user:pass@host:5432/bookverse",
+        ...     pool_size=10,
+        ...     max_overflow=20
+        ... )
+        
+        >>> # Development configuration with logging
+        >>> config = DatabaseConfig(
+        ...     database_url="sqlite:///bookverse.db",
+        ...     echo=True
+        ... )
     """
     
+    # 🗄️ Database Connection: Required database connection configuration
     database_url: str
-    echo: bool = False  # Set to True for SQL query logging in development
+    
+    # 🔧 SQLAlchemy Configuration: Query logging and debugging support
+    echo: bool = False
+    
+    # 📊 Connection Pooling: Performance optimization with connection management
     pool_size: int = 5
     max_overflow: int = 10
     
-    model_config = ConfigDict(env_prefix="DB_")  # Allow DB_DATABASE_URL, DB_ECHO, etc.
+    # 🌍 Environment Integration: Automatic environment variable loading
+    model_config = ConfigDict(env_prefix="DB_")
 
 
-# Global variables for database engine and session factory
+# 🏗️ Global State: Module-level engine and session factory management
 _engine: Optional[Engine] = None
 _session_factory: Optional[sessionmaker] = None
 
 
 def create_database_engine(config: DatabaseConfig) -> Engine:
     """
-    Create a SQLAlchemy database engine.
+    Create and configure SQLAlchemy database engine with connection pooling.
     
-    DEMO PURPOSE: Standardizes database engine creation across all services.
-    Previously: Each service had its own engine setup
-    Now: Single, consistent implementation
+    This function creates a singleton database engine with production-ready
+    connection pooling configuration, ensuring efficient database resource
+    utilization across the application lifecycle.
     
     Args:
-        config: Database configuration
+        config (DatabaseConfig): Database configuration with connection and pooling settings
         
     Returns:
-        SQLAlchemy engine instance
+        Engine: Configured SQLAlchemy engine with connection pooling
+        
+    Examples:
+        >>> config = DatabaseConfig(database_url="sqlite:///app.db")
+        >>> engine = create_database_engine(config)
+        >>> # Engine is cached for subsequent calls
+        
+    Features:
+        - Singleton pattern for efficient resource utilization
+        - Connection pooling with configurable pool size and overflow
+        - Query logging support for development and debugging
+        - Production-ready configuration with optimal defaults
     """
+    # 🔄 Singleton Pattern: Ensure single engine instance for resource efficiency
     global _engine
     
     if _engine is None:
+        # 🏗️ Engine Creation: Configure SQLAlchemy engine with pooling settings
         _engine = create_engine(
             config.database_url,
             echo=config.echo,
             pool_size=config.pool_size,
             max_overflow=config.max_overflow,
-            # Connection pool settings for demo stability
-            pool_pre_ping=True,  # Verify connections before use
-            pool_recycle=3600,   # Recycle connections after 1 hour
+            pool_pre_ping=True,
+            pool_recycle=3600,
         )
         logger.info(f"✅ Database engine created: {config.database_url}")
     
@@ -78,15 +156,8 @@ def create_database_engine(config: DatabaseConfig) -> Engine:
 
 
 def create_session_factory(engine: Engine) -> sessionmaker:
-    """
-    Create a SQLAlchemy session factory.
     
-    Args:
-        engine: SQLAlchemy engine
         
-    Returns:
-        Session factory
-    """
     global _session_factory
     
     if _session_factory is None:
@@ -101,62 +172,32 @@ def create_session_factory(engine: Engine) -> sessionmaker:
 
 
 def get_database_session(config: DatabaseConfig) -> Generator[Session, None, None]:
-    """
-    FastAPI dependency for database sessions.
     
-    DEMO PURPOSE: Provides a standard FastAPI dependency that all services can use
-    for database access. Replaces the various get_db() implementations across services.
     
-    Usage in FastAPI endpoints:
-        @app.get("/items")
-        def get_items(db: Session = Depends(get_database_session)):
-            return db.query(Item).all()
     
-    Args:
-        config: Database configuration
         
-    Yields:
-        Database session
-    """
-    # Create engine and session factory if needed
     engine = create_database_engine(config)
     session_factory = create_session_factory(engine)
     
-    # Create session
     session = session_factory()
     
     try:
         yield session
-        # Commit any pending transactions
         session.commit()
     except Exception as e:
-        # Rollback on error
         session.rollback()
         logger.error(f"❌ Database session error: {e}")
         raise
     finally:
-        # Always close the session
         session.close()
 
 
 @contextmanager
 def database_session_context(config: DatabaseConfig) -> Generator[Session, None, None]:
-    """
-    Context manager for database sessions.
     
-    DEMO PURPOSE: Provides a context manager for database operations outside of FastAPI.
-    Useful for background tasks, CLI scripts, or other non-web contexts.
     
-    Usage:
-        with database_session_context(config) as db:
-            items = db.query(Item).all()
     
-    Args:
-        config: Database configuration
         
-    Yields:
-        Database session
-    """
     engine = create_database_engine(config)
     session_factory = create_session_factory(engine)
     session = session_factory()
@@ -173,16 +214,8 @@ def database_session_context(config: DatabaseConfig) -> Generator[Session, None,
 
 
 def create_tables(config: DatabaseConfig, base_class):
-    """
-    Create database tables from SQLAlchemy models.
     
-    DEMO PURPOSE: Provides a simple way to create tables for demo purposes.
-    In production, you'd use Alembic migrations.
     
-    Args:
-        config: Database configuration
-        base_class: SQLAlchemy declarative base class
-    """
     try:
         engine = create_database_engine(config)
         base_class.metadata.create_all(bind=engine)
@@ -193,21 +226,12 @@ def create_tables(config: DatabaseConfig, base_class):
 
 
 def test_database_connection(config: DatabaseConfig) -> bool:
-    """
-    Test database connectivity.
     
-    DEMO PURPOSE: Simple connectivity test for health checks and debugging.
     
-    Args:
-        config: Database configuration
         
-    Returns:
-        True if connection successful, False otherwise
-    """
     try:
         engine = create_database_engine(config)
         with engine.connect() as connection:
-            # Simple query to test connection
             connection.execute("SELECT 1")
         logger.info("✅ Database connection test successful")
         return True
@@ -216,13 +240,8 @@ def test_database_connection(config: DatabaseConfig) -> bool:
         return False
 
 
-# Utility function to reset global state (useful for testing)
 def reset_database_globals():
-    """
-    Reset global database state.
     
-    DEMO PURPOSE: Allows resetting database connections for testing or reconfiguration.
-    """
     global _engine, _session_factory
     
     if _engine:

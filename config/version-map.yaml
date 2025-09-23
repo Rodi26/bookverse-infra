@@ -1,18 +1,13 @@
-# BookVerse Infrastructure Version Configuration  
-# Dual-Build Aggregation Pattern: Multiple builds → Single application
-# Supports: bookverse-core (Python) + bookverse-devops (Generic) → bookverse-infra app
 
 applications:
   - key: bookverse-infra
     seeds:
-      application: 1.0.3  # Random seed for infrastructure application
+      application: 1.0.3
     packages:
-      # Packages from bookverse-core build (Python library)
       - type: python
         name: bookverse-core  
-        seed: 2.1.7  # Random seed for core library
+        seed: 2.1.7
       
-      # Packages from bookverse-devops build (DevOps tooling)
       - type: generic
         name: bookverse-devops
-        seed: 1.0.9  # Random seed for devops package
+        seed: 1.0.9

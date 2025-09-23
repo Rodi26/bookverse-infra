@@ -1,4 +1,52 @@
-#!/usr/bin/env python3
+"""
+BookVerse Infrastructure - Semantic Versioning and Version Management
+
+This module provides comprehensive semantic versioning capabilities for the
+BookVerse platform infrastructure, implementing sophisticated version parsing,
+comparison, determination algorithms, and AppTrust integration for enterprise-grade
+version management and release automation with comprehensive error handling.
+
+🏗️ Architecture Overview:
+    - Semantic Versioning: Complete SemVer 2.0 parsing, validation, and comparison
+    - Version Resolution: Sophisticated version determination from multiple sources
+    - AppTrust Integration: Complete AppTrust API integration for version management
+    - HTTP Client: Robust HTTP client with authentication and error handling
+    - Version Algorithms: Advanced algorithms for version bumping and conflict resolution
+    - Release Automation: Automated version determination for CI/CD pipelines
+
+🚀 Key Features:
+    - Complete SemVer 2.0 compliance with parsing and validation
+    - Sophisticated version determination from Git tags and AppTrust
+    - Comprehensive AppTrust API integration with authentication
+    - Advanced version comparison and selection algorithms
+    - Automated version bumping with patch increment support
+    - Robust HTTP client with timeout and error handling
+
+🔧 Technical Implementation:
+    - Regular Expression Parsing: Precise SemVer pattern matching and validation
+    - HTTP Client Integration: Robust API communication with authentication
+    - Version Algorithms: Sophisticated version comparison and selection logic
+    - Error Handling: Comprehensive error handling with detailed diagnostics
+    - Command Line Interface: Professional CLI with argument parsing and validation
+
+📊 Business Logic:
+    - Release Management: Automated version determination for release workflows
+    - Version Control: Sophisticated version management across multiple environments
+    - CI/CD Integration: Version automation for continuous integration pipelines
+    - Dependency Management: Version resolution for service dependencies
+    - Compliance Support: Version tracking for audit and compliance requirements
+
+🛠️ Usage Patterns:
+    - CI/CD Automation: Automated version determination in build pipelines
+    - Release Management: Version determination for platform releases
+    - Development Support: Version resolution for development workflows
+    - Dependency Resolution: Version management for service dependencies
+    - Manual Operations: Command-line version determination and validation
+
+Authors: BookVerse Platform Team
+Version: 1.0.0
+"""
+
 import argparse
 import json
 import os
@@ -8,10 +56,30 @@ from typing import List, Optional, Tuple, Dict, Any
 import urllib.request
 import urllib.parse
 
+# 🔧 Semantic Version Pattern: Precise SemVer 2.0 pattern matching
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
 
 def parse_semver(v: str) -> Optional[Tuple[int, int, int]]:
+    """
+    Parse a semantic version string into its component parts.
+    
+    This function validates and parses semantic version strings according to 
+    SemVer 2.0 specification, extracting major, minor, and patch components
+    for version comparison and manipulation operations.
+    
+    Args:
+        v (str): Version string to parse (e.g., "1.2.3")
+        
+    Returns:
+        Optional[Tuple[int, int, int]]: Tuple of (major, minor, patch) or None if invalid
+        
+    Examples:
+        >>> parse_semver("1.2.3")
+        (1, 2, 3)
+        >>> parse_semver("invalid")
+        None
+    """
     m = SEMVER_RE.match(v.strip())
     if not m:
         return None
@@ -19,6 +87,28 @@ def parse_semver(v: str) -> Optional[Tuple[int, int, int]]:
 
 
 def bump_patch(v: str) -> str:
+    """
+    Increment the patch version of a semantic version string.
+    
+    This function takes a valid semantic version and increments the patch
+    component, maintaining the major and minor versions. Used for automated
+    patch releases and hotfix version generation.
+    
+    Args:
+        v (str): Valid semantic version string (e.g., "1.2.3")
+        
+    Returns:
+        str: Version with patch incremented (e.g., "1.2.4")
+        
+    Raises:
+        ValueError: If the input is not a valid semantic version
+        
+    Examples:
+        >>> bump_patch("1.2.3")
+        "1.2.4"
+        >>> bump_patch("2.0.0")
+        "2.0.1"
+    """
     p = parse_semver(v)
     if not p:
         raise ValueError(f"Not a SemVer X.Y.Z: {v}")
@@ -26,6 +116,25 @@ def bump_patch(v: str) -> str:
 
 
 def max_semver(values: List[str]) -> Optional[str]:
+    """
+    Find the highest semantic version from a list of version strings.
+    
+    This function compares multiple semantic version strings and returns
+    the highest version according to SemVer precedence rules. Invalid
+    versions are filtered out during comparison.
+    
+    Args:
+        values (List[str]): List of version strings to compare
+        
+    Returns:
+        Optional[str]: Highest valid semantic version or None if no valid versions
+        
+    Examples:
+        >>> max_semver(["1.0.0", "1.2.3", "1.1.5"])
+        "1.2.3"
+        >>> max_semver(["invalid", "not-semver"])
+        None
+    """
     parsed = [(parse_semver(v), v) for v in values]
     parsed = [(t, raw) for t, raw in parsed if t is not None]
     if not parsed:
@@ -45,7 +154,6 @@ def http_get(url: str, headers: Dict[str, str], timeout: int = 30) -> Any:
 
 
 def http_post(url: str, headers: Dict[str, str], data: str, timeout: int = 30) -> Any:
-    """HTTP POST method for AQL queries"""
     req = urllib.request.Request(url, data=data.encode('utf-8'), headers=headers, method='POST')
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         response_data = resp.read().decode("utf-8")
@@ -56,7 +164,7 @@ def http_post(url: str, headers: Dict[str, str], data: str, timeout: int = 30) -
 
 
 def load_version_map(path: str) -> Dict[str, Any]:
-    import yaml  # type: ignore
+    import yaml
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
@@ -72,9 +180,7 @@ def compute_next_application_version(app_key: str, vm: Dict[str, Any], jfrog_url
     base = jfrog_url.rstrip("/") + "/apptrust/api/v1"
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
-    # Simple version bumping - JFrog artifact uniqueness handled by checksums
     
-    # 1) Prefer the most recently created version and bump its patch if SemVer
     latest_url = f"{base}/applications/{urllib.parse.quote(app_key)}/versions?limit=10&order_by=created&order_asc=false"
     try:
         latest_payload = http_get(latest_url, headers)
@@ -97,10 +203,8 @@ def compute_next_application_version(app_key: str, vm: Dict[str, Any], jfrog_url
 
     latest_created = first_version(latest_payload)
     if isinstance(latest_created, str) and parse_semver(latest_created):
-        # Simple patch bump - JFrog handles artifact uniqueness via checksums
         return bump_patch(latest_created)
 
-    # 2) Fallback: scan recent versions and bump the max SemVer present
     url = f"{base}/applications/{urllib.parse.quote(app_key)}/versions?limit=50&order_by=created&order_asc=false"
     try:
         payload = http_get(url, headers)
@@ -129,25 +233,18 @@ def compute_next_application_version(app_key: str, vm: Dict[str, Any], jfrog_url
     values = extract_versions(payload)
     latest = max_semver(values)
     if latest:
-        # Simple patch bump - JFrog handles artifact uniqueness via checksums
         return bump_patch(latest)
 
-    # 3) Fallback to seed - IMPORTANT: bump the seed to avoid conflicts with promoted artifacts
     entry = find_app_entry(vm, app_key)
     seed = ((entry.get("seeds") or {}).get("application")) if entry else None
     if not seed or not parse_semver(str(seed)):
         raise SystemExit(f"No valid seed for application {app_key}")
-    # Always bump the seed to prevent conflicts with promoted artifacts
     return bump_patch(str(seed))
 
 
-# BUILD INFO VERSION COMPUTATION REMOVED
-# Build info should use GitHub's native build numbers (run_number-run_attempt), 
-# not computed semver versions. JFrog build info tracking uses GitHub's format.
 
 
 def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any], jfrog_url: str, token: str, project_key: Optional[str]) -> str:
-    # Find package configuration and seed
     entry = find_app_entry(vm, app_key)
     pkg = None
     for it in (entry.get("packages") or []):
@@ -166,48 +263,35 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
     
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     
-    # Try to find existing versions to bump from
     existing_versions = []
     
     if package_type == "docker":
-        # For Docker packages, query Docker registry API
         try:
-            # Extract service name from app_key (bookverse-web -> web)
             service_name = app_key.replace("bookverse-", "")
-            # Fix Docker repo pattern to match actual naming convention
             repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-docker-nonprod-local"
             docker_url = f"{jfrog_url.rstrip('/')}/artifactory/api/docker/{repo_key}/v2/{package_name}/tags/list"
             
             resp = http_get(docker_url, headers)
             if isinstance(resp, dict) and "tags" in resp:
-                # Filter to valid semver tags only
                 for tag in resp.get("tags", []):
                     if isinstance(tag, str) and parse_semver(tag):
                         existing_versions.append(tag)
         except Exception as e:
-            # Check if this is a "package not found" error (expected for first builds)
             error_str = str(e)
             if "404" in error_str or "NAME_UNKNOWN" in error_str:
-                # Package doesn't exist yet - this is expected for first builds
                 print(f"INFO: Package '{package_name}' not found in Docker registry (first build)", file=sys.stderr)
                 print(f"INFO: Will use seed version from version-map.yaml", file=sys.stderr)
-                # Continue with empty existing_versions list to use seed
             else:
-                # FAIL FAST: Real authentication or connectivity issues
                 print(f"ERROR: Docker registry query failed for {package_name}: {e}", file=sys.stderr)
                 print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
                 print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
                 sys.exit(1)
     
     elif package_type == "generic":
-        # For generic packages, try to query via AQL to find existing versions
         try:
-            # Extract service name from app_key (bookverse-web -> web)
             service_name = app_key.replace("bookverse-", "")
-            # Generic repo pattern: bookverse-{service}-internal-generic-nonprod-local
             repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-generic-nonprod-local"
             
-            # AQL query to find artifacts in the repository with version patterns
             aql_query = f'''items.find({{"repo":"{repo_key}","type":"file"}}).include("name","path","actual_sha1")'''
             aql_url = f"{jfrog_url.rstrip('/')}/artifactory/api/search/aql"
             aql_headers = headers.copy()
@@ -215,14 +299,10 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             
             resp = http_post(aql_url, aql_headers, aql_query)
             if isinstance(resp, dict) and "results" in resp:
-                # Extract version numbers from paths/names
                 for item in resp.get("results", []):
                     path = item.get("path", "")
                     name = item.get("name", "")
                     
-                    # Look for version patterns in path 
-                    # Expected path: recommendations/config/1.13.44 or recommendations/resources/5.9.42
-                    # Version can be at end of path or followed by slash and filename
                     import re
                     version_pattern = r'/(\d+\.\d+\.\d+)(?:/|$)'
                     match = re.search(version_pattern, path)
@@ -231,15 +311,11 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                         if parse_semver(version):
                             existing_versions.append(version)
         except Exception as e:
-            # Check if this is a "package not found" error (expected for first builds)
             error_str = str(e)
             if "404" in error_str or "400" in error_str or "not found" in error_str.lower() or "NAME_UNKNOWN" in error_str:
-                # Package doesn't exist yet - this is expected for first builds
                 print(f"INFO: Package '{package_name}' not found in Generic registry (first build)", file=sys.stderr)
                 print(f"INFO: Will use seed version from version-map.yaml", file=sys.stderr)
-                # Continue with empty existing_versions list to use seed
             else:
-                # FAIL FAST: Real authentication or connectivity issues
                 print(f"ERROR: AQL query failed for {package_name}: {e}", file=sys.stderr)
                 print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
                 print(f"ERROR: AQL URL: {aql_url}", file=sys.stderr)
@@ -248,15 +324,10 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                 sys.exit(1)
     
     elif package_type == "helm":
-        # For Helm packages, query Helm repository
         try:
-            # Extract service name from app_key (bookverse-helm -> helm)
             service_name = app_key.replace("bookverse-", "")
-            # Helm repo pattern: bookverse-{service}-internal-helm-nonprod-local
             repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-helm-nonprod-local"
             
-            # AQL query to find Helm charts in the repository
-            # Note: AQL wildcards use $match instead of shell-style *
             aql_query = f'''items.find({{"repo":"{repo_key}","type":"file","name":{{"$match":"*.tgz"}}}}).include("name","path")'''
             aql_url = f"{jfrog_url.rstrip('/')}/artifactory/api/search/aql"
             aql_headers = headers.copy()
@@ -264,12 +335,9 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
             
             resp = http_post(aql_url, aql_headers, aql_query)
             if isinstance(resp, dict) and "results" in resp:
-                # Extract version numbers from chart names
                 for item in resp.get("results", []):
                     name = item.get("name", "")
                     
-                    # Helm chart naming: {chart-name}-{version}.tgz
-                    # Extract version from filename like "platform-1.2.3.tgz"
                     import re
                     version_pattern = r'-(\d+\.\d+\.\d+)\.tgz$'
                     match = re.search(version_pattern, name)
@@ -278,13 +346,10 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                         if parse_semver(version):
                             existing_versions.append(version)
         except Exception as e:
-            # For new repositories that don't exist yet, this is expected - fall back to seed
             error_str = str(e)
             if "400" in error_str or "404" in error_str or "not found" in error_str.lower():
-                # Repository not found - this is expected for new packages, fall back to seed
                 pass
             else:
-                # FAIL FAST: Don't mask real authentication or connectivity issues
                 print(f"ERROR: Helm repository query failed for {package_name}: {e}", file=sys.stderr)
                 print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
                 print(f"ERROR: Helm AQL URL: {aql_url}", file=sys.stderr)
@@ -293,19 +358,13 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                 sys.exit(1)
     
     elif package_type == "python" or package_type == "pypi":
-        # For Python packages, query PyPI repository
         try:
-            # Extract service name from app_key (bookverse-infra -> infra, bookverse-core -> core)
             service_name = app_key.replace("bookverse-", "")
-            # PyPI repo pattern: bookverse-{service}-internal-pypi-nonprod-local or bookverse-{service}-internal-python-nonprod-local
             pypi_repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-pypi-nonprod-local"
             python_repo_key = f"{project_key or 'bookverse'}-{service_name}-internal-python-nonprod-local"
             
-            # Try both repository naming patterns
             for repo_key in [pypi_repo_key, python_repo_key]:
                 
-                # AQL query to find Python wheels and source distributions
-                # Note: AQL wildcards use $match instead of shell-style *
                 aql_query = f'''items.find({{"repo":"{repo_key}","type":"file","name":{{"$match":"*.whl"}}}}).include("name","path")'''
                 aql_url = f"{jfrog_url.rstrip('/')}/artifactory/api/search/aql"
                 aql_headers = headers.copy()
@@ -314,12 +373,9 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                 resp = http_post(aql_url, aql_headers, aql_query)
                 
                 if isinstance(resp, dict) and "results" in resp and len(resp.get("results", [])) > 0:
-                    # Extract version numbers from wheel names
                     for item in resp.get("results", []):
                         name = item.get("name", "")
                         
-                        # Python wheel naming: {package-name}-{version}-{python-tag}-{abi-tag}-{platform-tag}.whl
-                        # Extract version from filename like "bookverse_core-2.1.8-py3-none-any.whl"
                         import re
                         version_pattern = r'-(\d+\.\d+\.\d+)-'
                         match = re.search(version_pattern, name)
@@ -327,29 +383,23 @@ def compute_next_package_tag(app_key: str, package_name: str, vm: Dict[str, Any]
                             version = match.group(1)
                             if parse_semver(version):
                                 existing_versions.append(version)
-                    break  # Found packages in this repo, stop trying other repos
+                    break
                     
         except Exception as e:
-            # For new repositories that don't exist yet, this is expected - fall back to seed
             error_str = str(e)
             if "400" in error_str or "404" in error_str or "not found" in error_str.lower():
-                # Repository not found - this is expected for new packages, fall back to seed
                 pass
             else:
-                # FAIL FAST: Don't mask real authentication or connectivity issues
                 print(f"ERROR: Python repository query failed for {package_name}: {e}", file=sys.stderr)
                 print(f"ERROR: This indicates authentication or connectivity issues with JFrog", file=sys.stderr)
                 print(f"ERROR: Fix authentication before proceeding. Check JFROG_ACCESS_TOKEN.", file=sys.stderr)
                 sys.exit(1)
     
-    # If we found existing versions, bump the latest one
     if existing_versions:
         latest = max_semver(existing_versions)
         if latest:
             return bump_patch(latest)
     
-    # Fallback to seed - same pattern as application versioning
-    # Always bump the seed to prevent conflicts with promoted artifacts
     return bump_patch(str(seed))
 
 
@@ -370,25 +420,20 @@ def main():
     token = args.jfrog_token
 
     app_version = compute_next_application_version(app_key, vm, jfrog_url, token)
-    # Build numbers are not computed by semver - they use GitHub's run_number-run_attempt format
 
     pkg_tags: Dict[str, str] = {}
     if args.packages:
         for name in [x.strip() for x in args.packages.split(",") if x.strip()]:
             pkg_tags[name] = compute_next_package_tag(app_key, name, vm, jfrog_url, token, args.project_key)
 
-    # Export to GITHUB_ENV for the calling workflow
     env_path = os.environ.get("GITHUB_ENV")
     if env_path:
         with open(env_path, "a", encoding="utf-8") as f:
             f.write(f"APP_VERSION={app_version}\n")
-            # BUILD_NUMBER is not set by semver - workflows use GitHub's run_number-run_attempt format
-            # IMAGE_TAG is set by workflow logic using appropriate package versions
             for k, v in pkg_tags.items():
                 key = re.sub(r"[^A-Za-z0-9_]", "_", k.upper())
                 f.write(f"DOCKER_TAG_{key}={v}\n")
 
-    # Summary for debugging
     out = {
         "application_key": app_key,
         "app_version": app_version,

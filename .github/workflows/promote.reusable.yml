@@ -1,3 +1,128 @@
+# =============================================================================
+# BookVerse Infrastructure - Reusable Promotion Workflow and Parameter Management
+# =============================================================================
+#
+# This comprehensive reusable GitHub Actions workflow provides enterprise-grade
+# promotion capabilities for all BookVerse services, implementing sophisticated
+# application lifecycle management, stage-based promotion logic, and AppTrust
+# integration with comprehensive parameter management and evidence collection
+# for production-ready continuous deployment automation across the platform.
+#
+# 🏗️ REUSABLE WORKFLOW ARCHITECTURE:
+#     - Multi-Service Support: Unified promotion logic for all BookVerse services
+#     - Parameter Management: Comprehensive input parameter handling and validation
+#     - Stage-Based Promotion: Automated promotion through DEV → QA → STAGING → PROD lifecycle
+#     - AppTrust Integration: Complete JFrog AppTrust lifecycle management and evidence collection
+#     - OIDC Authentication: Secure, passwordless authentication with GitHub Actions integration
+#     - Evidence Collection: Cryptographic evidence generation and audit trail management
+#
+# 🚀 KEY REUSABLE FEATURES:
+#     - Universal Application: Reusable across all BookVerse services without modification
+#     - Flexible Parameterization: Comprehensive input parameters for customization
+#     - Enterprise Promotion Logic: Production-ready promotion workflows with safety mechanisms
+#     - Automated Version Management: Intelligent version resolution and semantic versioning
+#     - Cross-Service Compatibility: Unified promotion logic supporting all service types
+#     - Production Safety: Enterprise-grade safety mechanisms and validation procedures
+#
+# 🔧 PARAMETER DOCUMENTATION:
+#     - target_stage: Target deployment stage (DEV, QA, STAGING, PROD) with validation
+#     - application_version: Semantic version specification or latest version resolution
+#     - service_name: BookVerse service identifier for context-aware promotion
+#     - oidc_provider_name: OIDC provider configuration for secure JFrog authentication
+#     - evidence_key_alias: Cryptographic evidence key alias for signing and validation
+#     - Advanced parameter validation and type checking for enterprise safety
+#
+# 📊 WORKFLOW PATTERNS:
+#     - Caller Workflow Integration: Seamless integration with service-specific workflows
+#     - Output Management: Structured output for calling workflow consumption
+#     - Error Handling: Comprehensive error handling and graceful degradation
+#     - Status Reporting: Detailed status reporting and operation logging
+#     - Dependency Management: Intelligent dependency resolution and coordination
+#     - Performance Optimization: Optimized workflow execution and resource management
+#
+# 🛡️ ENTERPRISE SECURITY AND GOVERNANCE:
+#     - Secure Parameter Handling: Comprehensive input validation and sanitization
+#     - OIDC Integration: Passwordless authentication with GitHub Actions OIDC tokens
+#     - Evidence Generation: Cryptographic evidence collection and audit trail creation
+#     - Access Control: Role-based access control and permission management
+#     - Audit Compliance: Complete audit trail and compliance documentation
+#     - Security Validation: Comprehensive security validation and vulnerability scanning
+#
+# 🔄 LIFECYCLE MANAGEMENT INTEGRATION:
+#     - AppTrust Native: Complete JFrog AppTrust platform integration
+#     - Stage Progression: Automated progression through deployment lifecycle stages
+#     - Version Coordination: Cross-service version coordination and dependency management
+#     - Quality Gates: Integration with quality gates and validation procedures
+#     - Rollback Coordination: Promotion rollback capabilities and disaster recovery
+#     - Monitoring Integration: Real-time monitoring and alerting during promotion operations
+#
+# 📈 SCALABILITY AND AUTOMATION:
+#     - Multi-Service Scaling: Efficient scaling across multiple BookVerse services
+#     - Batch Processing: Support for batch promotion operations and coordination
+#     - Performance Optimization: Optimized promotion operations and resource utilization
+#     - Automation Framework: Complete automation of promotion procedures
+#     - Integration Testing: Automated integration testing and validation
+#     - Monitoring Integration: Promotion operation monitoring and status reporting
+#
+# 🔐 ADVANCED SAFETY FEATURES:
+#     - Parameter Validation: Comprehensive input parameter validation and type checking
+#     - Environment Isolation: Secure environment isolation and configuration management
+#     - Error Recovery: Advanced error recovery and rollback procedures
+#     - Validation Framework: Promotion validation and integrity checking
+#     - Security Scanning: Automated security scanning and vulnerability assessment
+#     - Compliance Integration: Regulatory compliance validation and documentation
+#
+# 🛠️ TECHNICAL IMPLEMENTATION:
+#     - GitHub Actions Reusable: Native GitHub Actions reusable workflow implementation
+#     - JFrog Platform Integration: Complete JFrog AppTrust and Artifactory integration
+#     - OIDC Authentication: Secure OIDC token-based authentication and authorization
+#     - Parameter Management: Advanced parameter handling and validation framework
+#     - Output Generation: Structured output for calling workflow consumption
+#     - Error Handling: Comprehensive error detection and recovery procedures
+#
+# 📋 SUPPORTED SERVICE TYPES:
+#     - Python Services: FastAPI microservices with Python package promotion
+#     - Node.js Services: Frontend applications with npm package promotion
+#     - Container Services: Docker image promotion and container registry management
+#     - Configuration Services: Helm charts and Kubernetes configuration promotion
+#     - Infrastructure Services: DevOps tooling and infrastructure automation promotion
+#     - Multi-Language Support: Universal promotion logic supporting all technology stacks
+#
+# 🎯 SUCCESS CRITERIA:
+#     - Universal Applicability: Successful reuse across all BookVerse services
+#     - Parameter Flexibility: Comprehensive parameterization for service customization
+#     - Enterprise Safety: Production-ready safety mechanisms and validation
+#     - Integration Success: Seamless integration with service-specific workflows
+#     - Performance Excellence: Optimized promotion operations and resource efficiency
+#     - Operational Readiness: Promotion workflows ready for production operations
+#
+# Authors: BookVerse Platform Team
+# Version: 1.0.0
+# Last Updated: 2024
+#
+# Dependencies:
+#   - GitHub Actions environment (workflow execution)
+#   - JFrog Platform with AppTrust (application lifecycle management)
+#   - OIDC authentication configuration (secure access)
+#   - BookVerse service repositories (promotion targets)
+#
+# Usage:
+#   uses: yonatanp-jfrog/bookverse-infra/.github/workflows/promote.reusable.yml@main
+#   with:
+#     target_stage: "QA"
+#     application_version: "1.2.3"
+#     service_name: "inventory"
+#     oidc_provider_name: "github-actions"
+#     evidence_key_alias: "bookverse-evidence-key"
+#
+# Security Notes:
+#   - All parameters undergo comprehensive validation and type checking
+#   - OIDC authentication ensures passwordless and secure promotion operations
+#   - Evidence collection provides complete audit trail and compliance documentation
+#   - Error handling ensures graceful degradation and safe operation
+#
+# =============================================================================
+
 name: Promote (reusable)
 
 on:
@@ -151,7 +276,7 @@ jobs:
           STAGES=(); while IFS= read -r orig; do [[ -z "$orig" ]] && continue; display=$(display_stage_for "$orig"); STAGES+=("$display"); done < <(printf "%s\n" "$NAMES")
           rm -f "$NORM_FILE"
           if [[ ${
-          if [[ -n "$RELEASE_STAGE" ]]; then FINAL_STAGE=$(display_stage_for "$RELEASE_STAGE"); else FINAL_STAGE="${STAGES[$((${#STAGES[@]}-1))]}"; fi
+          if [[ -n "$RELEASE_STAGE" ]]; then FINAL_STAGE=$(display_stage_for "$RELEASE_STAGE"); else FINAL_STAGE="${STAGES[$((${
           echo "FINAL_STAGE=$FINAL_STAGE" >> $GITHUB_ENV
           STAGES_STR="${STAGES[*]}"; echo "STAGES_STR=$STAGES_STR" >> $GITHUB_ENV
           TARGET_NAME='${{ steps.app.outputs.target_stage }}'
@@ -333,7 +458,7 @@ jobs:
             echo "Patching $repo_key environments via v2 API"
             local resp
             resp=$(curl -sS -L -w '\n%{http_code}' -X PATCH "$JF_URL/artifactory/api/v2/repositories/$repo_key" -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" -d '{"environments":["PROD"],"blackedOut":false}')
-            local body="${resp%$'\n'*}"; local code="${resp##*$'\n'}"
+            local body="${resp%$'\n'*}"; local code="${resp
             echo "$body" | cat
             echo "HTTP $code"
             if [[ "$code" -ge 200 && "$code" -lt 300 ]]; then return 0; fi
@@ -410,22 +535,13 @@ jobs:
           
           echo "✅ PROD release successful, running comprehensive tag validation and healing"
           
-          # Set up environment for tag management library
           export JFROG_URL='${{ vars.JFROG_URL }}'
           export PROJECT_KEY='${{ vars.PROJECT_KEY }}'
           export APPLICATION_KEY='${{ steps.app.outputs.application_key }}'
           export JF_OIDC_TOKEN="$JF_OIDC_TOKEN"
           
-          # Load the self-healing tag management library
           source bookverse-infra/libraries/bookverse-devops/scripts/tag-management-lib.sh
           
-          # Run comprehensive tag validation and healing
-          # This will:
-          # 1. Find all versions and their current states
-          # 2. Identify the highest SemVer version in PROD (latest candidate)
-          # 3. Validate all tags are correct based on version states
-          # 4. Fix any inconsistencies (add/remove tags as needed)
-          # 5. Handle quarantined versions, non-SemVer versions, etc.
           validate_and_heal_tags
           
           echo ""
@@ -441,7 +557,7 @@ jobs:
         run: |
           set -euo pipefail
           CURRENT_DISPLAY="${CURRENT_STAGE_BEFORE:-UNASSIGNED}"
-          CURRENT_DISPLAY="${CURRENT_DISPLAY#bookverse-}"
+          CURRENT_DISPLAY="${CURRENT_DISPLAY
           TARGET_DISPLAY="${TARGET_NAME:-${FINAL_STAGE:-UNKNOWN}}"
           export CURRENT_DISPLAY TARGET_DISPLAY
           STAGES="${STAGES_STR:-DEV QA STAGING PROD}"

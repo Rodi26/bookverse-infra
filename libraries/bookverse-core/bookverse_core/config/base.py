@@ -1,7 +1,52 @@
-"""
-Base configuration classes for BookVerse services.
 
-Provides Pydantic-based configuration with type safety and validation.
+
+"""
+BookVerse Core Library - Configuration Management System
+
+This module provides comprehensive configuration management for the BookVerse
+platform, implementing enterprise-grade configuration patterns with Pydantic
+validation, environment variable integration, and standardized service
+configuration across all BookVerse microservices.
+
+🏗️ Architecture Overview:
+    - Pydantic Configuration: Type-safe configuration with automatic validation
+    - Environment Integration: Seamless .env file and environment variable support
+    - Service Standardization: Consistent configuration patterns across all services
+    - Validation Framework: Comprehensive configuration validation with error reporting
+    - Authentication Integration: Built-in authentication and security configuration
+    - Database Configuration: Standardized database connection and session management
+
+🚀 Key Features:
+    - Type-safe configuration with automatic validation and type conversion
+    - Environment variable integration with .env file support and secure defaults
+    - Service metadata management with consistent naming and versioning patterns
+    - Authentication configuration with JWT, OIDC, and development mode support
+    - Database configuration with connection string management and session pooling
+    - Logging configuration with structured logging and performance monitoring
+
+🔧 Technical Implementation:
+    - Pydantic BaseModel: Type-safe configuration with automatic validation
+    - Environment Variables: Secure configuration management with environment integration
+    - Configuration Inheritance: Extensible configuration patterns for service customization
+    - Validation Rules: Comprehensive validation with custom validators and error handling
+    - Default Management: Secure defaults with production-ready configuration patterns
+
+📊 Business Logic:
+    - Service Standardization: Consistent configuration patterns across the platform
+    - Security Compliance: Secure configuration management with authentication integration
+    - Operational Excellence: Configuration validation and error prevention
+    - Development Efficiency: Simplified configuration management for rapid development
+    - Environment Management: Multi-environment configuration with secure defaults
+
+🛠️ Usage Patterns:
+    - Service Configuration: Base configuration for all BookVerse microservices
+    - Development Workflows: .env file integration for local development
+    - Production Deployment: Environment variable configuration for production
+    - Testing Frameworks: Configuration management for testing and CI/CD
+    - Configuration Validation: Type-safe configuration with comprehensive validation
+
+Authors: BookVerse Platform Team
+Version: 1.0.0
 """
 
 import os
@@ -15,54 +60,84 @@ T = TypeVar('T', bound='BaseConfig')
 
 class BaseConfig(BaseModel):
     """
-    Base configuration class for BookVerse services.
+    Base configuration class for all BookVerse microservices.
     
-    Provides common configuration fields and utilities that all services need.
+    This class provides comprehensive configuration management for BookVerse
+    services, implementing type-safe configuration with Pydantic validation,
+    environment variable integration, and standardized service configuration
+    patterns across the entire platform.
+    
+    Features:
+        - Type-safe configuration with automatic validation and type conversion
+        - Environment variable integration with .env file support
+        - Service metadata management with consistent patterns
+        - Authentication configuration with security defaults
+        - Database configuration with connection management
+        - Logging configuration with structured logging support
+        
+    Configuration Sources (in order of precedence):
+        1. Environment variables (highest priority)
+        2. .env file in current directory
+        3. Default values (lowest priority)
+        
+    Examples:
+        >>> # Basic service configuration
+        >>> config = BaseConfig(
+        ...     service_name="Inventory Service",
+        ...     service_version="2.1.0",
+        ...     environment="production"
+        ... )
+        
+        >>> # Environment variable integration
+        >>> # Set: SERVICE_NAME=checkout, API_VERSION=v2
+        >>> config = BaseConfig()  # Automatically loads from environment
+        
+        >>> # Custom service configuration
+        >>> class InventoryConfig(BaseConfig):
+        ...     database_url: str = "sqlite:///inventory.db"
+        ...     cache_ttl: int = 300
     """
     
+    # 🔧 Pydantic Configuration: Environment integration and validation settings
     model_config = ConfigDict(
-        # Allow environment variables to override config
-        env_file=".env",
-        env_file_encoding="utf-8",
-        # Case sensitive environment variables
-        case_sensitive=False,
-        # Validate assignment
-        validate_assignment=True,
-        # Extra fields are forbidden by default
-        extra="forbid"
+        env_file=".env",                    # Automatic .env file loading
+        env_file_encoding="utf-8",          # UTF-8 encoding support
+        case_sensitive=False,               # Case-insensitive environment variables
+        validate_assignment=True,           # Validate values on assignment
+        extra="forbid"                      # Prevent extra fields for security
     )
     
-    # Common service metadata
+    # 📊 Service Identification: Core service metadata and identification
     service_name: str = Field(
         default="BookVerse Service",
-        description="Name of the service"
+        description="Name of the service for identification and logging"
     )
     
     service_version: str = Field(
         default="1.0.0",
-        description="Version of the service"
+        description="Semantic version of the service for deployment tracking"
     )
     
     service_description: str = Field(
         default="A BookVerse microservice",
-        description="Description of the service"
+        description="Human-readable description of the service functionality"
     )
     
-    # API configuration
+    # 🌐 API Configuration: API versioning and routing configuration
     api_version: str = Field(
         default="v1",
-        description="API version"
+        description="API version for routing and backward compatibility"
     )
     
     api_prefix: str = Field(
         default="/api/v1",
-        description="API path prefix"
+        description="API path prefix for all service endpoints"
     )
     
-    # Environment and logging
+    # 🏗️ Environment Management: Environment-specific configuration
     environment: str = Field(
         default="development",
-        description="Environment (development, staging, production)"
+        description="Deployment environment (development, staging, production)"
     )
     
     log_level: str = Field(
@@ -75,13 +150,11 @@ class BaseConfig(BaseModel):
         description="Enable debug mode"
     )
     
-    # Database configuration (optional)
     database_url: Optional[str] = Field(
         default=None,
         description="Database connection URL"
     )
     
-    # Authentication configuration
     auth_enabled: bool = Field(
         default=True,
         description="Enable authentication"
@@ -109,51 +182,36 @@ class BaseConfig(BaseModel):
     
     @property
     def is_production(self) -> bool:
-        """Check if running in production environment."""
         return self.environment.lower() == "production"
     
     @property
     def is_development(self) -> bool:
-        """Check if running in development environment."""
         return self.environment.lower() == "development"
     
     @property
     def is_debug_enabled(self) -> bool:
-        """Check if debug mode is enabled."""
         return self.debug or self.is_development
     
     def get_api_prefix(self) -> str:
-        """Get the full API prefix."""
         if self.api_prefix.startswith("/"):
             return self.api_prefix
         return f"/api/{self.api_version}"
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert configuration to dictionary."""
         return self.model_dump()
     
     @classmethod
     def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
-        """Create configuration from dictionary."""
         return cls(**data)
     
     @classmethod
     def from_env(cls: Type[T], prefix: str = "") -> T:
-        """
-        Create configuration from environment variables.
         
-        Args:
-            prefix: Environment variable prefix (e.g., "INVENTORY_")
             
-        Returns:
-            Configuration instance
-        """
         env_vars = {}
         
-        # Get all environment variables with the prefix
         for key, value in os.environ.items():
             if prefix and key.startswith(prefix):
-                # Remove prefix and convert to lowercase
                 config_key = key[len(prefix):].lower()
                 env_vars[config_key] = value
             elif not prefix:

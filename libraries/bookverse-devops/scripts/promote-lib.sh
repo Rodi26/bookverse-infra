@@ -1,26 +1,7 @@
 #!/usr/bin/env bash
 
-# Promotion helper library for Bookverse AppTrust workflows.
-# This file is sourced by GitHub Actions steps.
-#
-# Expected environment (set by workflow steps):
-# - APPLICATION_KEY: e.g., bookverse-inventory
-# - APP_VERSION: SemVer of the application version
-# - JFROG_URL: base URL to JFrog platform (https://...)
-# - PROJECT_KEY: project key (e.g., bookverse)
-# - JF_OIDC_TOKEN: OIDC access token (from JFrog token exchange)
-# - STAGES_STR: space-separated display stage names (e.g., "DEV QA STAGING PROD")
-# - FINAL_STAGE: display name of release stage (usually PROD)
-# - ALLOW_RELEASE: "true" to allow release when at FINAL_STAGE
-# - RELEASE_INCLUDED_REPO_KEYS: JSON array string of repository keys for release (optional)
-#
-# Provided functions:
-# - display_stage_for <stage>
-# - fetch_summary
-# - advance_one_step
 
 __bv__trim_base() {
-  # Ensure JFROG_URL has no trailing slash
   local base="${JFROG_URL:-}"
   base="${base%/}"
   printf "%s" "$base"
@@ -28,7 +9,6 @@ __bv__trim_base() {
 
 
 __api_stage_for() {
-  # Convert display stage (e.g., STAGING) to API stage (project-prefixed when applicable)
   local d="${1:-}"
   local p="${PROJECT_KEY:-}"
   if [[ -z "$d" || "$d" == "UNASSIGNED" ]]; then
@@ -39,14 +19,11 @@ __api_stage_for() {
     printf "%s\n" "PROD"
     return 0
   fi
-  # If already prefixed, return as-is
   if [[ -n "$p" && "$d" == "$p-"* ]]; then printf "%s\n" "$d"; return 0; fi
   if [[ -n "$p" ]]; then printf "%s\n" "$p-$d"; else printf "%s\n" "$d"; fi
 }
 
 __persist_env() {
-  # Persist VAR=VALUE to both current shell and GitHub actions env
-  # Usage: __persist_env VAR VALUE
   local k="$1"; shift
   local v="$*"
   export "$k"="$v"
@@ -56,8 +33,6 @@ __persist_env() {
 }
 
 fetch_summary() {
-  # Refresh CURRENT_STAGE and RELEASE_STATUS from AppTrust Content API.
-  # Falls back to existing env values if API is unavailable.
   local base="$(__bv__trim_base)"
   local app="${APPLICATION_KEY:-}"
   local ver="${APP_VERSION:-}"
@@ -65,7 +40,6 @@ fetch_summary() {
   local url
   url="$base/apptrust/api/v1/applications/$app/versions/$ver/content"
 
-  # If essentials missing, keep current env and return success.
   if [[ -z "$base" || -z "$app" || -z "$ver" || -z "$tok" ]]; then
     return 0
   fi
@@ -86,24 +60,21 @@ fetch_summary() {
     return 0
   fi
   rm -f "$tmp" || true
-  # Keep existing env on failure
   return 0
 }
 
 __compute_next_display_stage() {
-  # Determine next display stage from CURRENT_STAGE and STAGES_STR
   local curr_disp stages next=""
   curr_disp="$(display_stage_for "${CURRENT_STAGE:-}")"
   stages=( )
-  # shellcheck disable=SC2206
   stages=(${STAGES_STR:-})
   if [[ -z "$curr_disp" || "$curr_disp" == "UNASSIGNED" ]]; then
     next="${stages[0]:-}"
   else
     local i
-    for ((i=0; i<${#stages[@]}; i++)); do
+    for ((i=0; i<${
       if [[ "${stages[$i]}" == "$curr_disp" ]]; then
-        if (( i+1 < ${#stages[@]} )); then next="${stages[$((i+1))]}"; fi
+        if (( i+1 < ${
         break
       fi
     done
@@ -112,12 +83,10 @@ __compute_next_display_stage() {
 }
 
 advance_one_step() {
-  # Promote to the next stage, or release if ALLOW_RELEASE and at FINAL_STAGE
   fetch_summary || true
 
   local next_disp; next_disp="$(__compute_next_display_stage)"
   if [[ -z "$next_disp" ]]; then
-    # Nothing to do
     return 0
   fi
 
@@ -132,10 +101,8 @@ advance_one_step() {
     mode="release"
   fi
 
-  # Attempt real API calls first; fallback to optimistic local state on failure.
   if [[ -n "$base" && -n "$app" && -n "$ver" && -n "$tok" ]]; then
     if [[ "$mode" == "promote" ]]; then
-      # Use the proper promote_to_stage function instead of inline logic
       echo "🚀 Promoting to ${next_disp} via AppTrust"
       if promote_to_stage "$next_disp"; then
         echo "✅ Promotion to ${next_disp} successful"
@@ -145,7 +112,6 @@ advance_one_step() {
         return 1
       fi
     else
-      # Release mode - use release_version function for proper error handling
       echo "🚀 Releasing to ${next_disp} via AppTrust"
       if release_version; then
         echo "✅ Release to ${next_disp} successful"
@@ -165,20 +131,7 @@ advance_one_step() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Promote/Release helper library sourced by the promotion workflow.
-#
-# Flow overview (how release is triggered):
-# - The workflow step "Release to PROD" (in .github/workflows/promote.yml)
-#   sets ALLOW_RELEASE=true and calls advance_one_step.
-# - advance_one_step() computes the next stage. If that next stage equals
-#   FINAL_STAGE (PROD) AND ALLOW_RELEASE=true, it invokes release_version().
-# - release_version() performs the AppTrust Release API call:
-#     POST /apptrust/api/v1/applications/{application_key}/versions/{version}/release
-#   with a JSON payload (promotion_type copy + included_repository_keys)
-#   to move the application version to the global release stage (PROD).
-# - For non-final stages, advance_one_step() calls promote_to_stage() instead.
 
-# Minimal debug printer
 print_request_info() {
   local method="$1"; local url="$2"; local body="${3:-}"
   echo "---- HTTP Request ----"
@@ -191,9 +144,6 @@ print_request_info() {
   echo "---------------------"
 }
 
-# Translate a display stage name (e.g., DEV) to the API stage identifier:
-# - Non-PROD stages must be project-prefixed for API calls (bookverse-DEV, etc.)
-# - PROD remains the global release stage (no prefix)
 api_stage_for() {
   local s="${1:-}"
   if [[ "$s" == "PROD" ]]; then
@@ -205,24 +155,17 @@ api_stage_for() {
   fi
 }
 
-# Translate an API stage identifier to a display name used internally:
-# - bookverse-DEV → DEV, bookverse-STAGING → STAGING
-# - PROD remains PROD
 display_stage_for() {
   local s="${1:-}"
   if [[ "$s" == "PROD" || "$s" == "${PROJECT_KEY:-}-PROD" ]]; then
     echo "PROD"
   elif [[ "$s" == "${PROJECT_KEY:-}-"* ]]; then
-    echo "${s#${PROJECT_KEY:-}-}"
+    echo "${s
   else
     echo "$s"
   fi
 }
 
-# Query the AppTrust Version Summary to determine current stage and release status.
-# On success, exports CURRENT_STAGE and RELEASE_STATUS to the environment, with
-# CURRENT_STAGE in API form (e.g., bookverse-STAGING, PROD). Callers should wrap
-# it with display_stage_for when comparing against human readable names.
 fetch_summary() {
   local body url code
   body=$(mktemp)
@@ -247,15 +190,11 @@ fetch_summary() {
   echo "🔎 Current stage: $(display_stage_for "${CURRENT_STAGE:-UNASSIGNED}") (release_status=${RELEASE_STATUS:-unknown})"
 }
 
-# Small helper to POST JSON to AppTrust endpoints, capturing HTTP status and body.
-# NOTE: Callers are responsible for printing request context (via print_request_info)
-# upon errors and for interpreting success/failure semantics.
 apptrust_post() {
   local path="${1:-}"; local data="${2:-}"; local out_file="${3:-}"
   local url="${JFROG_URL}${path}"
   local code
-  # Use longer timeout for promotion operations which can take time
-  local timeout="${APPTRUST_TIMEOUT_SECONDS:-300}"  # 5 minutes default
+  local timeout="${APPTRUST_TIMEOUT_SECONDS:-300}"
   code=$(curl -sS -L -X POST -o "$out_file" -w "%{http_code}" \
     --max-time "$timeout" \
     -H "Authorization: Bearer ${JF_OIDC_TOKEN}" \
@@ -269,7 +208,6 @@ apptrust_post() {
   fi
 }
 
-# Call the AppTrust Promote API to move the version to a non-final stage
 promote_to_stage() {
   local target_stage_display="${1:-}"
   local resp_body
@@ -295,42 +233,26 @@ promote_to_stage() {
   fetch_summary
 }
 
-# Call the AppTrust Release API to move the version to the final release stage (PROD)
-# NOTE: This function is NOT called directly by the workflow. The workflow
-#       sets ALLOW_RELEASE=true and calls advance_one_step(); only when the
-#       computed next stage equals FINAL_STAGE (PROD) will advance_one_step()
-#       invoke release_version(). See advance_one_step() below.
-# Call the AppTrust Release API to move the version to the final release stage (PROD)
-#
-# Payload selection rules (included_repository_keys):
-# - If RELEASE_INCLUDED_REPO_KEYS is provided (JSON array), it is used verbatim.
-# - Otherwise, infer repository keys from APPLICATION_KEY and PROJECT_KEY.
-#   These should point to release-local repositories attached to PROD.
 release_version() {
   local resp_body
   resp_body=$(mktemp)
   echo "🚀 Releasing to ${FINAL_STAGE} via AppTrust Release API"
-  # Build included repositories list if provided or infer from APPLICATION_KEY and PROJECT_KEY
   local payload
   if [[ -n "${RELEASE_INCLUDED_REPO_KEYS:-}" ]]; then
     payload=$(printf '{"promotion_type":"move","included_repository_keys":%s}' "${RELEASE_INCLUDED_REPO_KEYS}")
   else
-    # Derive service name from application key: bookverse-<service>
     local service_name
-    service_name="${APPLICATION_KEY#${PROJECT_KEY}-}"
+    service_name="${APPLICATION_KEY
     
-    # Build repository list based on service type
     local release_repos=()
     case "$service_name" in
       helm)
-        # Helm service uses helm and generic repositories
         release_repos+=(
           "${PROJECT_KEY}-${service_name}-internal-helm-release-local"
           "${PROJECT_KEY}-${service_name}-internal-generic-release-local"
         )
         ;;
       web)
-        # Web service uses npm, docker and generic repositories
         release_repos+=(
           "${PROJECT_KEY}-${service_name}-internal-npm-release-local"
           "${PROJECT_KEY}-${service_name}-internal-docker-release-local"
@@ -338,7 +260,6 @@ release_version() {
         )
         ;;
       platform)
-        # Platform service uses docker, python and generic repositories (public visibility)
         release_repos+=(
           "${PROJECT_KEY}-${service_name}-public-docker-release-local"
           "${PROJECT_KEY}-${service_name}-public-python-release-local"
@@ -346,14 +267,12 @@ release_version() {
         )
         ;;
       infra)
-        # Infra service uses pypi and generic repositories
         release_repos+=(
           "${PROJECT_KEY}-${service_name}-internal-pypi-release-local"
           "${PROJECT_KEY}-${service_name}-internal-generic-release-local"
         )
         ;;
       *)
-        # Other services (inventory, recommendations, checkout) use docker, python and generic
         release_repos+=(
           "${PROJECT_KEY}-${service_name}-internal-docker-release-local"
           "${PROJECT_KEY}-${service_name}-internal-python-release-local"
@@ -362,7 +281,6 @@ release_version() {
         ;;
     esac
     
-    # Build JSON array for payload
     local repos_json=""
     for repo in "${release_repos[@]}"; do
       if [[ -n "$repos_json" ]]; then
@@ -423,12 +341,12 @@ attach_evidence_qa() {
   scan_id=$(cat /proc/sys/kernel/random/uuid)
   med=$((2 + RANDOM % 5))
   emit_json dast-qa.json "{\n    \"environment\": \"QA\",\n    \"scanId\": \"${scan_id}\",\n    \"status\": \"PASSED\",\n    \"findings\": { \"critical\": 0, \"high\": 0, \"medium\": ${med} },\n    \"attachStage\": \"QA\", \"gateForPromotionTo\": \"STAGING\",\n    \"timestamp\": \"${now_ts}\"\n  }"
-  printf "# dast-scan\n" > dast-scan.md
+  printf "
   evd_create dast-qa.json "https://invicti.com/evidence/dast/v3" dast-scan.md
   coll=$(cat /proc/sys/kernel/random/uuid)
   pass=$((100 + RANDOM % 31))
   emit_json postman-qa.json "{\n    \"environment\": \"QA\",\n    \"collectionId\": \"${coll}\",\n    \"status\": \"PASSED\",\n    \"assertionsPassed\": ${pass},\n    \"assertionsFailed\": 0,\n    \"attachStage\": \"QA\", \"gateForPromotionTo\": \"STAGING\",\n    \"timestamp\": \"${now_ts}\"\n  }"
-  printf "# api-tests\n" > api-tests.md
+  printf "
   evd_create postman-qa.json "https://postman.com/evidence/collection/v2.2" api-tests.md
 }
 
@@ -436,13 +354,10 @@ attach_evidence_staging() {
   local now_ts med_iac low_iac pent tid
   now_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   med_iac=$((1 + RANDOM % 3)); low_iac=$((8 + RANDOM % 7))
-  # Disabled: staging gate evidence is attached explicitly in workflow to avoid duplicates
   :
   pent=$(cat /proc/sys/kernel/random/uuid)
-  # Disabled duplicate pentest evidence; handled by workflow
   :
   tid=$((3000000 + RANDOM % 1000000))
-  # Disabled duplicate ServiceNow approval; handled by workflow
   :
 }
 
@@ -451,8 +366,7 @@ attach_evidence_prod() {
   now_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   rev="${GITHUB_SHA:-${GITHUB_SHA:-}}"; short=${rev:0:8}
   emit_json argocd-prod.json "{ \"tool\": \"ArgoCD\", \"status\": \"Synced\", \"revision\": \"${short}\", \"deployedAt\": \"${now_ts}\", \"attachStage\": \"PROD\" }"
-  printf "# argocd-deploy\n" > argocd-deploy.md
-  # Use a shortened predicate-type to ensure type slug < 16 chars
+  printf "
   evd_create argocd-prod.json "https://argo.cd/ev/deploy/v1" argocd-deploy.md
 }
 
