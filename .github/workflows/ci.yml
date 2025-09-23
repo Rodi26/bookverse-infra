@@ -255,7 +255,7 @@ jobs:
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "BUILD_NAME=$BUILD_NAME" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
-          echo "🏷️ Build: $BUILD_NAME
+          echo "🏷️ Build: $BUILD_NAME"
 
       - name: "[Setup] Install and Configure JFrog CLI"
         uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
@@ -277,7 +277,7 @@ jobs:
         run: |
           echo "🔧 Verifying JFrog CLI configuration"
           echo "✅ JFrog CLI installed and configured with OIDC authentication"
-          echo "🏷️ Build: $BUILD_NAME
+          echo "🏷️ Build: $BUILD_NAME"
           
           jf rt ping
 
@@ -445,7 +445,7 @@ jobs:
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "BUILD_NAME=$BUILD_NAME" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
-          echo "🏷️ Build: $BUILD_NAME
+          echo "🏷️ Build: $BUILD_NAME"
 
       - name: "[Setup] Install and Configure JFrog CLI"
         uses: EyalDelarea/setup-jfrog-cli@swampUpAppTrust
@@ -467,7 +467,7 @@ jobs:
         run: |
           echo "🔧 Verifying JFrog CLI configuration"
           echo "✅ JFrog CLI installed and configured with OIDC authentication"
-          echo "🏷️ Build: $BUILD_NAME
+          echo "🏷️ Build: $BUILD_NAME"
           
           jf rt ping
 
@@ -727,7 +727,7 @@ jobs:
           fi
           
           TAG_OPTIONS=(release hotfix feature bugfix enhancement security performance refactor)
-          TAG_INDEX=$((${GITHUB_RUN_NUMBER:-0} % ${
+          TAG_INDEX=$((${GITHUB_RUN_NUMBER:-0} % ${#TAG_OPTIONS[@]}))
           APP_TAG="${TAG_OPTIONS[$TAG_INDEX]}"
           
           SOURCES='[]'
@@ -908,15 +908,15 @@ jobs:
 
       - name: "[Summary] Infrastructure Deployment Complete"
         run: |
-          echo "
+          echo "## 🚀 Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "
+          echo "### 📋 Application Details" >> $GITHUB_STEP_SUMMARY
           echo "- **Application**: \`bookverse-infra\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: \`${{ env.APP_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Trigger**: ${{ needs.analyze-commit.outputs.decision_reason }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Final Stage**: PROD ✅" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "
+          echo "### 📦 Package Builds" >> $GITHUB_STEP_SUMMARY
           
           if [[ "${{ needs.build-bookverse-core.result }}" == "success" ]]; then
             echo "- **bookverse-core**: v${{ needs.build-bookverse-core.outputs.package_version }} (Coverage: ${{ needs.build-bookverse-core.outputs.coverage_percent }}%)" >> $GITHUB_STEP_SUMMARY
@@ -931,14 +931,14 @@ jobs:
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "
+          echo "### 🛡️ Evidence & Promotion Trail" >> $GITHUB_STEP_SUMMARY
           echo "- **UNASSIGNED**: Evidence attached (SLSA provenance, Jira release)" >> $GITHUB_STEP_SUMMARY
           echo "- **DEV**: Promoted ✅ + Evidence (smoke tests)" >> $GITHUB_STEP_SUMMARY
           echo "- **QA**: Promoted ✅ + Evidence (DAST scan, API tests)" >> $GITHUB_STEP_SUMMARY
           echo "- **STAGING**: Promoted ✅ + Evidence (IaC scan, pentest, change approval)" >> $GITHUB_STEP_SUMMARY
           echo "- **PROD**: Promoted ✅ + Evidence (deployment verification)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "
+          echo "### ✅ Deployment Status" >> $GITHUB_STEP_SUMMARY
           echo "- Infrastructure libraries available in JFrog Artifactory" >> $GITHUB_STEP_SUMMARY
           echo "- Services can consume bookverse-core and bookverse-devops libraries" >> $GITHUB_STEP_SUMMARY
           echo "- Full evidence trail collected across all lifecycle stages" >> $GITHUB_STEP_SUMMARY
