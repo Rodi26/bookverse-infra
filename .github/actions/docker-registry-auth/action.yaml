@@ -53,8 +53,8 @@ runs:
         fi
         
         DOCKER_REGISTRY="${REGISTRY_URL}"
-        DOCKER_REGISTRY="${DOCKER_REGISTRY
-        DOCKER_REGISTRY="${DOCKER_REGISTRY
+        DOCKER_REGISTRY="${DOCKER_REGISTRY#http://}"
+        DOCKER_REGISTRY="${DOCKER_REGISTRY#https://}"
         DOCKER_REGISTRY="${DOCKER_REGISTRY%/}"
         
         [[ "$DEBUG" == "true" ]] && echo "🐳 Registry hostname: $DOCKER_REGISTRY"
@@ -62,7 +62,7 @@ runs:
         [[ "$DEBUG" == "true" ]] && echo "🔍 Parsing JWT token for username..."
         TOKEN_PAYLOAD=$(echo "$OIDC_TOKEN" | cut -d. -f2)
         
-        case $((${
+        case $((${#TOKEN_PAYLOAD} % 4)) in
           2) TOKEN_PAYLOAD="${TOKEN_PAYLOAD}==" ;;
           3) TOKEN_PAYLOAD="${TOKEN_PAYLOAD}=" ;;
         esac
@@ -76,7 +76,7 @@ runs:
         DOCKER_USER=$(echo "$CLAIMS" | jq -r '.username // .sub // .subject // "oauth2_access_token"' 2>/dev/null || echo "oauth2_access_token")
         
         if [[ "$DOCKER_USER" == *"/users/"* ]]; then
-          DOCKER_USER=${DOCKER_USER
+          DOCKER_USER=${DOCKER_USER##*/}
           [[ "$DEBUG" == "true" ]] && echo "🔍 Extracted username from JFrog path format"
         fi
         
