@@ -181,7 +181,7 @@ attach_package_pytest_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/package/docker/pytest-results.json.template"
   process_template "$template_file" "pytest-results.json"
   
-  printf "
+  printf "📋 Creating pytest evidence...\n"
   evd_create pytest-results.json "https://pytest.org/evidence/results/v1" pytest-results.md
 }
 
@@ -199,7 +199,7 @@ attach_package_sast_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/package/docker/sast-scan.json.template"
   process_template "$template_file" "sast-scan.json"
   
-  printf "
+  printf "📋 Creating SAST evidence...\n"
   evd_create sast-scan.json "https://checkmarx.com/evidence/sast/v1.1" sast-scan.md
 }
 
@@ -217,7 +217,7 @@ attach_package_config_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/package/generic/config-bundle.json.template"
   process_template "$template_file" "config-bundle.json"
   
-  printf "
+  printf "📋 Creating config bundle evidence...\n"
   evd_create config-bundle.json "https://in-toto.io/Statement/v0.1" config-bundle.md
 }
 
@@ -231,7 +231,7 @@ attach_build_fossa_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/build/fossa-license-scan.json.template"
   process_template "$template_file" "fossa-license-scan.json"
   
-  printf "
+  printf "📋 Creating FOSSA license evidence...\n"
   evd_create fossa-license-scan.json "https://fossa.com/evidence/license-scan/v2.1" fossa-license-scan.md
 }
 
@@ -245,7 +245,7 @@ attach_build_sonar_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/build/sonar-quality-gate.json.template"
   process_template "$template_file" "sonar-quality-gate.json"
   
-  printf "
+  printf "📋 Creating SonarQube evidence...\n"
   evd_create sonar-quality-gate.json "https://sonarsource.com/evidence/quality-gate/v1" sonar-quality-gate.md
 }
 
@@ -259,7 +259,7 @@ attach_application_slsa_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/unassigned/slsa-provenance.json.template"                                                            
   process_template "$template_file" "slsa-provenance.json"
   
-  printf "
+  printf "📋 Creating SLSA provenance evidence...\n"
   evd_create slsa-provenance.json "https://slsa.dev/provenance/v1" slsa-provenance.md                                                                           
 }
 
@@ -273,7 +273,7 @@ attach_application_jira_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/unassigned/jira-release.json.template"
   process_template "$template_file" "jira-release.json"
   
-  printf "
+  printf "📋 Creating JIRA release evidence...\n"
   evd_create jira-release.json "https://atlassian.com/evidence/jira/release/v1" jira-release.md
 }
 
@@ -287,7 +287,7 @@ attach_application_smoke_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/dev/smoke-tests.json.template"
   process_template "$template_file" "smoke-tests.json"
   
-  printf "
+  printf "📋 Creating smoke test evidence...\n"
   evd_create smoke-tests.json "https://bookverse.com/evidence/smoke-tests/v1" smoke-tests.md
 }
 
@@ -301,7 +301,7 @@ attach_application_dast_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/qa/dast-scan.json.template"
   process_template "$template_file" "dast-scan.json"
   
-  printf "
+  printf "📋 Creating DAST evidence...\n"
   evd_create dast-scan.json "https://invicti.com/evidence/dast/v3" dast-scan.md
 }
 
@@ -315,7 +315,7 @@ attach_application_api_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/qa/api-tests.json.template"
   process_template "$template_file" "api-tests.json"
   
-  printf "
+  printf "📋 Creating API test evidence...\n"
   evd_create api-tests.json "https://postman.com/evidence/collection/v2.2" api-tests.md
 }
 
@@ -329,7 +329,7 @@ attach_application_iac_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/staging/iac-scan.json.template"
   process_template "$template_file" "iac-scan.json"
   
-  printf "
+  printf "📋 Creating IaC scan evidence...\n"
   evd_create iac-scan.json "https://snyk.io/evidence/iac/v1" iac-scan.md
 }
 
@@ -343,7 +343,7 @@ attach_application_pentest_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/staging/pentest.json.template"
   process_template "$template_file" "pentest.json"
   
-  printf "
+  printf "📋 Creating pentest evidence...\n"
   evd_create pentest.json "https://cobalt.io/evidence/pentest/v1" pentest.md
 }
 
@@ -357,7 +357,7 @@ attach_application_change_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/staging/change-approval.json.template"
   process_template "$template_file" "change-approval.json"
   
-  printf "
+  printf "📋 Creating change approval evidence...\n"
   evd_create change-approval.json "https://servicenow.com/evidence/change-req/v1" change-approval.md
 }
 
@@ -371,7 +371,7 @@ attach_application_deployment_evidence() {
   local template_file="$EVIDENCE_TEMPLATES_DIR/application/prod/deployment-verification.json.template"
   process_template "$template_file" "deployment-verification.json"
   
-  printf "
+  printf "📋 Creating deployment verification evidence...\n"
   evd_create deployment-verification.json "https://argoproj.github.io/argo-cd/evidence/deployment/v1" deployment-verification.md
 }
 
