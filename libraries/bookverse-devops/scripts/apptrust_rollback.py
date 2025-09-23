@@ -327,6 +327,14 @@ def rollback_in_prod(client: AppTrustClient, app_key: str, target_version: str, 
     if target is None:
         raise RuntimeError(f"Target version not found in PROD set: {target_version}")
 
+    # Output stage information for workflow consumption
+    try:
+        version_content = client.get_application_version(app_key, target_version)
+        stage_before = version_content.get("current_stage", "")
+        print(f"WORKFLOW_STAGE_BEFORE={stage_before}")
+    except Exception:
+        print("WORKFLOW_STAGE_BEFORE=PROD")  # Assume PROD if we can't get it
+
     from_stage = "PROD"
     if not dry_run:
         print(f"Calling AppTrust endpoint: POST /applications/{app_key}/versions/{target_version}/rollback with body {{from_stage: {from_stage}}}")
@@ -337,6 +345,24 @@ def rollback_in_prod(client: AppTrustClient, app_key: str, target_version: str, 
             raise RuntimeError(f"AppTrust rollback API call failed: {e}")
     else:
         print(f"[DRY-RUN] Would call AppTrust rollback API: POST /applications/{app_key}/versions/{target_version}/rollback with body {{from_stage: {from_stage}}}")
+    
+    # Output stage information after rollback for workflow consumption
+    try:
+        version_content_after = client.get_application_version(app_key, target_version)
+        stage_after = version_content_after.get("current_stage", "")
+        print(f"WORKFLOW_STAGE_AFTER={stage_after}")
+    except Exception:
+        # After rollback, the version might be UNASSIGNED or in a previous stage
+        # Find the previous stage based on the stage lifecycle
+        stages = ["UNASSIGNED", "bookverse-DEV", "bookverse-QA", "bookverse-STAGING", "PROD"]
+        try:
+            idx = stages.index("PROD")
+            if idx > 0:
+                print(f"WORKFLOW_STAGE_AFTER={stages[idx-1]}")
+            else:
+                print("WORKFLOW_STAGE_AFTER=UNASSIGNED")
+        except:
+            print("WORKFLOW_STAGE_AFTER=UNASSIGNED")
 
     current_tag = target.get("tag", "")
     had_latest = current_tag == LATEST_TAG
