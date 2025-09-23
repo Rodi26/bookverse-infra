@@ -44,11 +44,11 @@ compare_semver() {
     read -ra vnum1 <<< "$v1_clean"
     read -ra vnum2 <<< "$v2_clean"
 
-    for ((i=0; i<${
-        if (( 10
+    for ((i=0; i<${#vnum1[@]}; i++)); do
+        if (( 10#${vnum1[i]} > 10#${vnum2[i]} )); then
             echo 1; return
         fi
-        if (( 10
+        if (( 10#${vnum1[i]} < 10#${vnum2[i]} )); then
             echo -1; return
         fi
     done

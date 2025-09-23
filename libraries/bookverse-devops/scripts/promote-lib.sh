@@ -72,9 +72,11 @@ __compute_next_display_stage() {
     next="${stages[0]:-}"
   else
     local i
-    for ((i=0; i<${
+    for ((i=0; i<${#stages[@]}; i++)); do
       if [[ "${stages[$i]}" == "$curr_disp" ]]; then
-        if (( i+1 < ${
+        if (( i+1 < ${#stages[@]} )); then
+          next="${stages[i+1]}"
+        fi
         break
       fi
     done
@@ -160,7 +162,7 @@ display_stage_for() {
   if [[ "$s" == "PROD" || "$s" == "${PROJECT_KEY:-}-PROD" ]]; then
     echo "PROD"
   elif [[ "$s" == "${PROJECT_KEY:-}-"* ]]; then
-    echo "${s
+    echo "${s#${PROJECT_KEY:-}-}"
   else
     echo "$s"
   fi
@@ -242,7 +244,7 @@ release_version() {
     payload=$(printf '{"promotion_type":"move","included_repository_keys":%s}' "${RELEASE_INCLUDED_REPO_KEYS}")
   else
     local service_name
-    service_name="${APPLICATION_KEY
+    service_name="${APPLICATION_KEY##*-}"
     
     local release_repos=()
     case "$service_name" in
@@ -341,12 +343,12 @@ attach_evidence_qa() {
   scan_id=$(cat /proc/sys/kernel/random/uuid)
   med=$((2 + RANDOM % 5))
   emit_json dast-qa.json "{\n    \"environment\": \"QA\",\n    \"scanId\": \"${scan_id}\",\n    \"status\": \"PASSED\",\n    \"findings\": { \"critical\": 0, \"high\": 0, \"medium\": ${med} },\n    \"attachStage\": \"QA\", \"gateForPromotionTo\": \"STAGING\",\n    \"timestamp\": \"${now_ts}\"\n  }"
-  printf "
+  printf "# DAST Security Scan Report\\n\\nDAst scan completed for QA environment with medium findings: %d\\n" "$med" > dast-scan.md
   evd_create dast-qa.json "https://invicti.com/evidence/dast/v3" dast-scan.md
   coll=$(cat /proc/sys/kernel/random/uuid)
   pass=$((100 + RANDOM % 31))
   emit_json postman-qa.json "{\n    \"environment\": \"QA\",\n    \"collectionId\": \"${coll}\",\n    \"status\": \"PASSED\",\n    \"assertionsPassed\": ${pass},\n    \"assertionsFailed\": 0,\n    \"attachStage\": \"QA\", \"gateForPromotionTo\": \"STAGING\",\n    \"timestamp\": \"${now_ts}\"\n  }"
-  printf "
+  printf "# API Testing Report\\n\\nPostman collection tests completed with %d assertions passed\\n" "$pass" > api-tests.md
   evd_create postman-qa.json "https://postman.com/evidence/collection/v2.2" api-tests.md
 }
 
@@ -366,7 +368,7 @@ attach_evidence_prod() {
   now_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   rev="${GITHUB_SHA:-${GITHUB_SHA:-}}"; short=${rev:0:8}
   emit_json argocd-prod.json "{ \"tool\": \"ArgoCD\", \"status\": \"Synced\", \"revision\": \"${short}\", \"deployedAt\": \"${now_ts}\", \"attachStage\": \"PROD\" }"
-  printf "
+  printf "# ArgoCD Deployment Report\\n\\nApplication deployed to PROD with revision: %s\\n" "$short" > argocd-deploy.md
   evd_create argocd-prod.json "https://argo.cd/ev/deploy/v1" argocd-deploy.md
 }
 
