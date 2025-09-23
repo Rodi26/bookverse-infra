@@ -125,6 +125,8 @@
 
 name: Promote (reusable)
 
+# Note: Concurrency is controlled by the calling workflow, not this reusable workflow
+
 on:
   workflow_call:
     inputs:
