@@ -608,7 +608,7 @@ jobs:
   create-promote:
     name: "Create Application Version & Promote (Conditional)"
     needs: [analyze-commit, build-bookverse-core, build-bookverse-devops]
-    if: needs.analyze-commit.outputs.create_app_version == 'true' && (needs.build-bookverse-core.result == 'success' || needs.build-bookverse-core.result == 'skipped') && (needs.build-bookverse-devops.result == 'success' || needs.build-bookverse-devops.result == 'skipped')
+    if: false && (needs.build-bookverse-core.result == 'success' || needs.build-bookverse-core.result == 'skipped') && (needs.build-bookverse-devops.result == 'success' || needs.build-bookverse-devops.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
