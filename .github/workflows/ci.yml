@@ -82,12 +82,12 @@ on:
   # 📤 Push Events: Automatic validation when infrastructure code is updated on main branch
   push:
     branches: [main]
-  
+
   # 🔍 Pull Request Events: Comprehensive testing of proposed infrastructure changes
   # Ensures shared library quality and compatibility before merging into main branch
   pull_request:
     branches: [main]
-  
+
   # 🎛️ Manual Dispatch: On-demand execution for infrastructure testing and library validation
   # Supports manual deployment and cross-service compatibility validation scenarios
   workflow_dispatch:
@@ -126,7 +126,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 2  # Shallow clone with history for library change comparison
-          
+
       # 🔍 Detection: Infrastructure library change analysis and impact assessment
       # Analyzes changed files to determine which infrastructure libraries are affected
       # Critical for coordinating multi-package builds and dependency management
@@ -135,7 +135,7 @@ jobs:
         run: |
           # 📋 Change detection: Identify modified files for library impact analysis
           CHANGED_FILES=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
-          
+
           # 📚 Core library analysis: Check for bookverse-core shared library changes
           # Determines if foundational utilities and common patterns were modified
           if echo "$CHANGED_FILES" | grep -q "^libraries/bookverse-core/"; then
@@ -144,7 +144,7 @@ jobs:
           else
             echo "core_changed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # 🛠️ DevOps library analysis: Check for bookverse-devops automation changes
           # Determines if DevOps scripts, workflows, and operational tooling were modified
           if echo "$CHANGED_FILES" | grep -q "^libraries/bookverse-devops/"; then
@@ -153,11 +153,11 @@ jobs:
           else
             echo "devops_changed=false" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: "[Demo] Commit Analysis (Optimized for Visibility)"
         id: demo-filter
         run: |
-          
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ inputs.force_app_version }}" == "true" ]]; then
             echo "create_version=true" >> $GITHUB_OUTPUT
             echo "reason=Manual trigger with force_app_version=true" >> $GITHUB_OUTPUT
@@ -165,7 +165,7 @@ jobs:
             echo "✅ Demo: Forced application version creation (manual override)"
             exit 0
           fi
-          
+
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             COMMIT_MSG="${{ github.event.pull_request.title }}"
             COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
@@ -173,28 +173,28 @@ jobs:
             COMMIT_MSG="${{ github.event.head_commit.message }}"
             COMMIT_SHA="${{ github.sha }}"
           fi
-          
+
           CHANGED_FILES=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
-          
+
           echo "🎯 DEMO MODE: Analyzing commit for infrastructure CI/CD pipeline"
           echo "📝 Commit: ${COMMIT_SHA:0:8}"
           echo "💬 Message: $COMMIT_MSG"
           echo "📁 Changed files: $(echo "$CHANGED_FILES" | wc -l) files"
           echo "🏗️ Infrastructure note: Multi-library build with separate evidence"
           echo ""
-          
+
           if [[ "$COMMIT_MSG" =~ \[skip-version\] ]]; then
             echo "create_version=false" >> $GITHUB_OUTPUT
             echo "reason=Explicit [skip-version] tag" >> $GITHUB_OUTPUT
             echo "commit_type=build-only" >> $GITHUB_OUTPUT
             echo "🔨 Demo: Build info only (explicit skip)"
-            
+
           elif [[ "$COMMIT_MSG" =~ ^docs?: ]] && [[ -n "$CHANGED_FILES" ]] && [[ $(echo "$CHANGED_FILES" | grep -v '\.md$\|^docs/\|^README' | wc -l) -eq 0 ]]; then
             echo "create_version=false" >> $GITHUB_OUTPUT  
             echo "reason=Documentation-only changes" >> $GITHUB_OUTPUT
             echo "commit_type=build-only" >> $GITHUB_OUTPUT
             echo "🔨 Demo: Build info only (docs-only)"
-            
+
           else
             echo "create_version=true" >> $GITHUB_OUTPUT
             echo "reason=Demo mode: showing full infrastructure CI/CD pipeline" >> $GITHUB_OUTPUT
@@ -245,7 +245,7 @@ jobs:
           echo "🔄 Event: ${{ github.event_name }}"
           echo "👤 Triggered by: ${{ github.actor }}"
           echo "🕐 Timestamp: $(date -u)"
-          
+
       - name: "[Setup] Build Info"
         id: set-build-info
         run: |
@@ -278,7 +278,7 @@ jobs:
           echo "🔧 Verifying JFrog CLI configuration"
           echo "✅ JFrog CLI installed and configured with OIDC authentication"
           echo "🏷️ Build: $BUILD_NAME"
-          
+
           jf rt ping
 
       - name: "[Setup] Python"
@@ -290,9 +290,9 @@ jobs:
         run: |
           python -m pip install --upgrade "pip<25"
           pip install build twine
-          
+
           pip install -r requirements.txt
-          
+
           pip install -e .[dev]
           echo "✅ Installed bookverse-core dependencies"
 
@@ -300,9 +300,9 @@ jobs:
         id: test-coverage
         run: |
           set -euo pipefail
-          
+
           pytest tests/ -v --cov=bookverse_core --cov-report=term-missing --cov-report=xml --cov-report=html
-          
+
           COVERAGE_PERCENT=$(python -c "
           import xml.etree.ElementTree as ET
           tree = ET.parse('coverage.xml')
@@ -310,7 +310,7 @@ jobs:
           coverage = float(root.attrib['line-rate']) * 100
           print(f'{coverage:.1f}')
           ")
-          
+
           echo "coverage_percent=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
           echo "COVERAGE_PERCENT=$COVERAGE_PERCENT" >> $GITHUB_ENV
           echo "✅ Tests passed with $COVERAGE_PERCENT% coverage"
@@ -319,12 +319,12 @@ jobs:
         id: set-version
         run: |
           python -m build
-          
+
           PACKAGE_VERSION=$(python -c "
           import configparser
           import os
           from pathlib import Path
-          
+
           try:
               import tomllib
               with open('pyproject.toml', 'rb') as f:
@@ -332,10 +332,10 @@ jobs:
               version = data['project']['version']
           except:
               version = '0.1.0'
-          
+
           print(version)
           ")
-          
+
           echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
           echo "✅ Built bookverse-core v$PACKAGE_VERSION"
@@ -343,31 +343,31 @@ jobs:
       - name: "[Artifacts] Upload to JFrog"
         run: |
           set -euo pipefail
-          
+
           jf rt upload "dist/*.whl" "${{ vars.PROJECT_KEY }}-core-internal-python-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           jf rt upload "dist/*.tar.gz" "${{ vars.PROJECT_KEY }}-core-internal-python-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          
+
           echo "ℹ️  Coverage upload temporarily disabled - repository not available"
-          
+
           echo "✅ Uploaded bookverse-core artifacts to JFrog"
 
       - name: "[Build] Publish Build Info"
         run: |
           set -euo pipefail
-          
+
           echo "📋 Publishing build-info for bookverse-core library"
           echo "🏗️ Build: $BUILD_NAME/$BUILD_NUMBER"
           echo "📦 Contains: Python wheel + source distribution + test coverage"
-          
+
           jf rt bag --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"
           jf rt bce --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"
           if BUILD_PUBLISH_RESULT=$(jf rt bp --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"); then
             echo "BUILD_INFO_PUBLISH_STATUS=SUCCESS" >> $GITHUB_ENV
             BUILD_UI_URL=$(echo "$BUILD_PUBLISH_RESULT" | grep -o 'https://[^[:space:]]*builds/[^[:space:]]*' | head -1 || echo "")
-            
+
             if [[ -n "$BUILD_UI_URL" ]]; then
               EPOCH_MS=$(echo "$BUILD_UI_URL" | sed -n 's|.*/builds/[^/]*/[^/]*/\([0-9]*\)/published.*|\1|p')
-              
+
               if [[ -n "$EPOCH_MS" && "$EPOCH_MS" =~ ^[0-9]+$ ]]; then
                 EPOCH_SEC=$((EPOCH_MS / 1000))
                 BUILD_TIME=$(date -d "@$EPOCH_SEC" '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || date -r "$EPOCH_SEC" '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || echo "Unknown")
@@ -375,7 +375,7 @@ jobs:
                 echo "BUILD_TIME=$BUILD_TIME" >> $GITHUB_ENV
               fi
             fi
-            
+
             echo "✅ Build info published successfully for bookverse-core"
             echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
           else
@@ -390,22 +390,22 @@ jobs:
         run: |
           echo "📋 Using shared evidence library for bookverse-core build"
           echo "🔐 Evidence will be cryptographically signed for compliance verification"
-          
+
           source ../bookverse-devops/scripts/evidence-lib.sh
-          
+
           export PACKAGE_NAME="bookverse-core"
           export PACKAGE_VERSION="$PACKAGE_VERSION"
           export SERVICE_NAME="core"
           export APPLICATION_KEY="bookverse-core"
           export ATTACH_TO_BUILD="true"
           export ATTACH_TO_PACKAGE="false"
-          
+
           echo "🏗️ Attaching SonarQube evidence to build"
           attach_build_sonar_evidence
-          
+
           echo "📋 Attaching FOSSA license evidence to build"
           attach_build_fossa_evidence
-          
+
           echo "✅ Evidence attached to build using shared library"
 
   build-bookverse-devops:
@@ -435,7 +435,7 @@ jobs:
           echo "🔄 Event: ${{ github.event_name }}"
           echo "👤 Triggered by: ${{ github.actor }}"
           echo "🕐 Timestamp: $(date -u)"
-          
+
       - name: "[Setup] Build Info"
         id: set-build-info
         run: |
@@ -468,7 +468,7 @@ jobs:
           echo "🔧 Verifying JFrog CLI configuration"
           echo "✅ JFrog CLI installed and configured with OIDC authentication"
           echo "🏷️ Build: $BUILD_NAME"
-          
+
           jf rt ping
 
       - name: "[Setup] Python"
@@ -485,24 +485,24 @@ jobs:
       - name: "[Test] Validate scripts and workflows"
         run: |
           set -euo pipefail
-          
+
           python scripts/semver_versioning.py --help
           echo "✅ semver_versioning.py script validated"
-          
+
           chmod +x scripts/determine-semver.sh
           ./scripts/determine-semver.sh --help || echo "Script help test completed"
           echo "✅ determine-semver.sh script validated"
-          
+
           python -c "
           import yaml
           import os
-          
+
           yaml_files = []
           for root, dirs, files in os.walk('.'):
               for file in files:
                   if file.endswith('.yml') or file.endswith('.yaml'):
                       yaml_files.append(os.path.join(root, file))
-          
+
           for file in yaml_files:
               try:
                   with open(file, 'r') as f:
@@ -511,7 +511,7 @@ jobs:
               except Exception as e:
                   print(f'❌ {file} has invalid YAML: {e}')
                   exit(1)
-          
+
           print('✅ All YAML files validated')
           "
 
@@ -521,9 +521,9 @@ jobs:
           PACKAGE_VERSION="1.0.${{ github.run_number }}"
           echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
-          
+
           tar -czf "bookverse-devops-${PACKAGE_VERSION}.tar.gz" scripts/ evidence/ templates/ *.md
-          
+
           cat > version-manifest.json << EOF
           {
             "name": "bookverse-devops",
@@ -537,37 +537,34 @@ jobs:
             }
           }
           EOF
-          
+
           echo "✅ Packaged bookverse-devops v$PACKAGE_VERSION"
 
       - name: "[Artifacts] Upload to JFrog"
         run: |
           set -euo pipefail
-          
-          echo "ℹ️  DevOps artifact upload temporarily disabled - repository not available"
-          echo "📦 Artifacts created locally:"
-          ls -la bookverse-devops-${PACKAGE_VERSION}.tar.gz version-manifest.json
-          
-          
-          echo "✅ DevOps artifacts prepared (upload disabled)"
+
+          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-devops-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-devops-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          echo "✅ Uploaded bookverse-devops artifacts to JFrog"
 
       - name: "[Build] Publish Build Info"
         run: |
           set -euo pipefail
-          
+
           echo "📋 Publishing build-info for bookverse-devops library"
           echo "🏗️ Build: $BUILD_NAME/$BUILD_NUMBER"
           echo "📦 Contains: DevOps scripts + templates + validation evidence"
-          
+
           jf rt bag --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"
           jf rt bce --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"
           if BUILD_PUBLISH_RESULT=$(jf rt bp --project "${{ vars.PROJECT_KEY }}" "$BUILD_NAME" "$BUILD_NUMBER"); then
             echo "BUILD_INFO_PUBLISH_STATUS=SUCCESS" >> $GITHUB_ENV
             BUILD_UI_URL=$(echo "$BUILD_PUBLISH_RESULT" | grep -o 'https://[^[:space:]]*builds/[^[:space:]]*' | head -1 || echo "")
-            
+
             if [[ -n "$BUILD_UI_URL" ]]; then
               EPOCH_MS=$(echo "$BUILD_UI_URL" | sed -n 's|.*/builds/[^/]*/[^/]*/\([0-9]*\)/published.*|\1|p')
-              
+
               if [[ -n "$EPOCH_MS" && "$EPOCH_MS" =~ ^[0-9]+$ ]]; then
                 EPOCH_SEC=$((EPOCH_MS / 1000))
                 BUILD_TIME=$(date -d "@$EPOCH_SEC" '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || date -r "$EPOCH_SEC" '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || echo "Unknown")
@@ -575,7 +572,7 @@ jobs:
                 echo "BUILD_TIME=$BUILD_TIME" >> $GITHUB_ENV
               fi
             fi
-            
+
             echo "✅ Build info published successfully for bookverse-devops"
             echo "🔗 Build URL: ${BUILD_UI_URL:-'URL extraction failed'}"
           else
@@ -590,22 +587,22 @@ jobs:
         run: |
           echo "📋 Using shared evidence library for bookverse-devops build"
           echo "🔐 Evidence will be cryptographically signed for compliance verification"
-          
+
           source scripts/evidence-lib.sh
-          
+
           export PACKAGE_NAME="bookverse-devops"
           export PACKAGE_VERSION="$PACKAGE_VERSION"
           export SERVICE_NAME="devops"
           export APPLICATION_KEY="bookverse-devops"
           export ATTACH_TO_BUILD="true"
           export ATTACH_TO_PACKAGE="false"
-          
+
           echo "🏗️ Attaching SonarQube evidence to build"
           attach_build_sonar_evidence
-          
+
           echo "📋 Attaching FOSSA license evidence to build"
           attach_build_fossa_evidence
-          
+
           echo "✅ Evidence attached to build using shared library"
 
   create-promote:
@@ -616,7 +613,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    
+
     env:
       BUILD_NAME: "bookverse-infra_CI_create-promote"
       BUILD_NUMBER: ${{ github.run_number }}-${{ github.run_attempt }}
@@ -630,10 +627,10 @@ jobs:
       STAGES_STR: "DEV QA STAGING PROD"
       FINAL_STAGE: "PROD"
       ALLOW_RELEASE: "true"
-    
+
     outputs:
       app_version: ${{ steps.create-version.outputs.app_version }}
-    
+
     steps:
       - name: "[Setup] Checkout"
         uses: actions/checkout@v4
@@ -676,12 +673,12 @@ jobs:
           import requests
           import json
           from datetime import datetime
-          
+
           timestamp = datetime.now().strftime('%Y.%m.%d.%H%M')
           version = f'1.0.{timestamp}'
           print(version)
           ")
-          
+
           echo "🏷️ Generated Application Version: $APP_VERSION"
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
           echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
@@ -693,9 +690,9 @@ jobs:
           echo "   - bookverse-core: ${{ needs.build-bookverse-core.outputs.build_name }}/${{ needs.build-bookverse-core.outputs.build_number }}"
           echo "   - bookverse-devops: ${{ needs.build-bookverse-devops.outputs.build_name }}/${{ needs.build-bookverse-devops.outputs.build_number }}"
           echo "🔗 This creates an immutable link between application version and all published artifacts"
-          
+
           export JF_OIDC_TOKEN="${{ steps.jfrog-cli-auth.outputs.oidc-token }}"
-          
+
           if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
             echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
             echo "Debug - JFrog CLI outputs:"
@@ -703,11 +700,11 @@ jobs:
             exit 1
           fi
           echo "✅ Using JF_OIDC_TOKEN for AppTrust API authentication"
-          
+
           BASE="${{ vars.JFROG_URL }}/apptrust/api/v1"
           APP_KEY="$APPLICATION_KEY"
           APP_VERSION="${{ env.APP_VERSION }}"
-          
+
           echo "🔍 Preflight: ensuring application '$APP_KEY' exists"
           APP_GET_CODE=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/applications/$APP_KEY" \
             -H "Authorization: Bearer $JF_OIDC_TOKEN" -H "X-JFrog-Project: ${{ vars.PROJECT_KEY }}" -H "Accept: application/json")
@@ -725,29 +722,29 @@ jobs:
           else
             echo "✅ Application '$APP_KEY' already exists"
           fi
-          
+
           TAG_OPTIONS=(release hotfix feature bugfix enhancement security performance refactor)
           TAG_INDEX=$((${GITHUB_RUN_NUMBER:-0} % ${#TAG_OPTIONS[@]}))
           APP_TAG="${TAG_OPTIONS[$TAG_INDEX]}"
-          
+
           SOURCES='[]'
-          
+
           if [[ "${{ needs.build-bookverse-core.result }}" == "success" ]]; then
             CORE_SOURCE='{"name":"${{ needs.build-bookverse-core.outputs.build_name }}","number":"${{ needs.build-bookverse-core.outputs.build_number }}","repository_key":"${{ vars.PROJECT_KEY }}-build-info","include_dependencies":false}'
             SOURCES=$(echo "$SOURCES" | jq ". + [$CORE_SOURCE]")
           fi
-          
+
           if [[ "${{ needs.build-bookverse-devops.result }}" == "success" ]]; then
             DEVOPS_SOURCE='{"name":"${{ needs.build-bookverse-devops.outputs.build_name }}","number":"${{ needs.build-bookverse-devops.outputs.build_number }}","repository_key":"${{ vars.PROJECT_KEY }}-build-info","include_dependencies":false}'
             SOURCES=$(echo "$SOURCES" | jq ". + [$DEVOPS_SOURCE]")
           fi
-          
+
           SOURCES_JSON=$(echo "$SOURCES" | jq -c .)
           APP_VERSION_PAYLOAD='{"version":"'$APP_VERSION'","tag":"'$APP_TAG'","sources":{"builds":'$SOURCES_JSON'}}'
-          
+
           echo "📋 Creating application version with payload:"
           echo "$APP_VERSION_PAYLOAD" | jq . || echo "$APP_VERSION_PAYLOAD"
-          
+
           RESP_BODY=$(mktemp)
           HTTP_STATUS=$(curl -sS -L -o "$RESP_BODY" -w "%{http_code}" -X POST \
             "$BASE/applications/$APP_KEY/versions?async=false" \
@@ -756,12 +753,12 @@ jobs:
             -H "X-JFrog-Project: ${{ vars.PROJECT_KEY }}" \
             -d "$APP_VERSION_PAYLOAD" \
             --fail-with-body)
-          
+
           echo "🔢 HTTP Status: $HTTP_STATUS"
           echo "📨 Response Body:"
           cat "$RESP_BODY" | jq . 2>/dev/null || cat "$RESP_BODY"
           echo ""
-          
+
           if [[ "$HTTP_STATUS" -ge 200 && "$HTTP_STATUS" -lt 300 ]]; then
             echo "✅ Created application version $APP_VERSION"
           else
@@ -775,14 +772,14 @@ jobs:
             fi
           fi
           rm -f "$RESP_BODY"
-          
+
           echo "🔍 Validating application version creation..."
           CONTENT_FILE=$(mktemp)
           CONTENT_STATUS=$(curl -sS -L -o "$CONTENT_FILE" -w "%{http_code}" \
             "$BASE/applications/$APP_KEY/versions/$APP_VERSION/content" \
             -H "Authorization: Bearer $JF_OIDC_TOKEN" \
             -H "Accept: application/json")
-          
+
           if [[ "$CONTENT_STATUS" != "200" ]]; then
             echo "❌ Version content endpoint returned HTTP $CONTENT_STATUS for $APP_KEY@$APP_VERSION" >&2
             echo "📨 Response Body:"; cat "$CONTENT_FILE" || true; echo
@@ -804,11 +801,11 @@ jobs:
           EVIDENCE_KEY_ALIAS: ${{ vars.EVIDENCE_KEY_ALIAS }}
         run: |
           echo "📋 Generating evidence for application version (UNASSIGNED stage)"
-          
+
           source bookverse-infra/libraries/bookverse-devops/scripts/evidence-lib.sh
-          
+
           attach_application_unassigned_evidence
-          
+
           echo "✅ Application version evidence attached via shared library: slsa-provenance, jira-release"
 
       - name: "[Promote & Evidence] DEV Stage"
@@ -817,92 +814,92 @@ jobs:
           echo "📋 Application Version: ${{ env.APP_VERSION }}"
           echo "🎯 Target Stage: DEV (development environment for feature testing)"
           echo "🛡️ Evidence Type: Smoke tests and basic health validation"
-          
+
           if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
             echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
             exit 1
           fi
           echo "✅ Using JF_OIDC_TOKEN for DEV promotion"
-          
+
           source bookverse-infra/libraries/bookverse-devops/scripts/evidence-lib.sh
           setup_promotion_environment
-          
+
           if advance_one_step; then
             echo "✅ Successfully promoted to DEV"
           else
             echo "❌ Failed to promote to DEV"
             exit 1
           fi
-          
+
           attach_application_dev_evidence
           echo "✅ DEV stage evidence attached via shared library: smoke-tests"
 
       - name: "[Promote & Evidence] QA Stage"
         run: |
           echo "🔍 Promoting to QA stage and generating evidence"
-          
+
           if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
             echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
             exit 1
           fi
           echo "✅ Using JF_OIDC_TOKEN for QA promotion"
-          
+
           source bookverse-infra/libraries/bookverse-devops/scripts/evidence-lib.sh
           setup_promotion_environment
-          
+
           if advance_one_step; then
             echo "✅ Successfully promoted to QA"
           else
             echo "❌ Failed to promote to QA"
             exit 1
           fi
-          
+
           attach_application_qa_evidence
           echo "✅ QA stage evidence attached via shared library: dast-scan, api-tests"
 
       - name: "[Promote & Evidence] STAGING Stage"
         run: |
           echo "🏗️ Promoting to STAGING stage and generating evidence"
-          
+
           if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
             echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
             exit 1
           fi
           echo "✅ Using JF_OIDC_TOKEN for STAGING promotion"
-          
+
           source bookverse-infra/libraries/bookverse-devops/scripts/evidence-lib.sh
           setup_promotion_environment
-          
+
           if advance_one_step; then
             echo "✅ Successfully promoted to STAGING"
           else
             echo "❌ Failed to promote to STAGING"
             exit 1
           fi
-          
+
           attach_application_staging_evidence
           echo "✅ STAGING stage evidence attached via shared library: iac-scan, pentest, change-approval"
 
       - name: "[Promote & Evidence] PROD Stage"
         run: |
           echo "🚀 Promoting to PROD stage and generating evidence"
-          
+
           if [[ -z "${JF_OIDC_TOKEN:-}" ]]; then
             echo "❌ Missing JF_OIDC_TOKEN. Ensure OIDC exchange step succeeded." >&2
             exit 1
           fi
           echo "✅ Using JF_OIDC_TOKEN for PROD promotion"
-          
+
           source bookverse-infra/libraries/bookverse-devops/scripts/evidence-lib.sh
           setup_promotion_environment
-          
+
           if advance_one_step; then
             echo "✅ Successfully promoted to PROD"
           else
             echo "❌ Failed to promote to PROD"
             exit 1
           fi
-          
+
           attach_application_prod_evidence
           echo "✅ PROD stage evidence attached via shared library: deployment-verification"
 
@@ -917,19 +914,19 @@ jobs:
           echo "- **Final Stage**: PROD ✅" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Package Builds" >> $GITHUB_STEP_SUMMARY
-          
+
           if [[ "${{ needs.build-bookverse-core.result }}" == "success" ]]; then
             echo "- **bookverse-core**: v${{ needs.build-bookverse-core.outputs.package_version }} (Coverage: ${{ needs.build-bookverse-core.outputs.coverage_percent }}%)" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **bookverse-core**: Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [[ "${{ needs.build-bookverse-devops.result }}" == "success" ]]; then
             echo "- **bookverse-devops**: v${{ needs.build-bookverse-devops.outputs.package_version }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **bookverse-devops**: Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🛡️ Evidence & Promotion Trail" >> $GITHUB_STEP_SUMMARY
           echo "- **UNASSIGNED**: Evidence attached (SLSA provenance, Jira release)" >> $GITHUB_STEP_SUMMARY
