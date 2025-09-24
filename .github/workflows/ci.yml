@@ -544,11 +544,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Create artifacts locally and add them to build info without uploading
-          echo "📦 Adding local artifacts to build info without repository upload"
-          jf rt build-add-dependencies "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "$BUILD_NAME" "$BUILD_NUMBER"
-          jf rt build-add-dependencies "version-manifest.json" "$BUILD_NAME" "$BUILD_NUMBER"
-          echo "✅ Added bookverse-devops artifacts to build info (local files)"
+          # DevOps artifacts created locally - repository not available
+          echo "📦 DevOps artifacts created locally (upload disabled - repository not available)"
+          echo "✅ DevOps artifacts prepared locally (build info will contain git/environment data)"
 
       - name: "[Build] Publish Build Info"
         run: |
