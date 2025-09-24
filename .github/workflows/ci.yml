@@ -544,8 +544,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-devops-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-devops-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
           echo "✅ Uploaded bookverse-devops artifacts to JFrog"
 
       - name: "[Build] Publish Build Info"
