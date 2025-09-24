@@ -544,9 +544,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          jf rt upload "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "${{ vars.PROJECT_KEY }}-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          jf rt upload "version-manifest.json" "${{ vars.PROJECT_KEY }}-internal-generic-nonprod-local/" --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          echo "✅ Uploaded bookverse-devops artifacts to JFrog"
+          # Create artifacts locally and add them to build info without uploading
+          echo "📦 Adding local artifacts to build info without repository upload"
+          jf rt build-add-dependencies "bookverse-devops-${PACKAGE_VERSION}.tar.gz" "$BUILD_NAME" "$BUILD_NUMBER"
+          jf rt build-add-dependencies "version-manifest.json" "$BUILD_NAME" "$BUILD_NUMBER"
+          echo "✅ Added bookverse-devops artifacts to build info (local files)"
 
       - name: "[Build] Publish Build Info"
         run: |
