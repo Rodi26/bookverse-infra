@@ -1,109 +1,77 @@
 # BookVerse Infrastructure
 
-**Single consolidated infrastructure application** containing multiple packages for shared libraries and DevOps tooling across the BookVerse platform.
+Demo infrastructure repository for the BookVerse platform, showcasing JFrog AppTrust capabilities with enterprise library and DevOps tooling patterns.
 
-## 📦 Packages
+## 🎯 Demo Purpose & Patterns
 
-This single infrastructure application publishes multiple packages:
+This repository demonstrates the **Enterprise Library & DevOps Tooling Pattern** - showcasing how shared infrastructure libraries, DevOps utilities, and enterprise-wide tooling can be managed in AppTrust.
 
-### `bookverse-core` (Python Package)
+### 🛠️ **Enterprise Library & DevOps Tooling Pattern**
+- **What it demonstrates**: Shared libraries, automation scripts, and DevOps utilities managed as versioned artifacts
+- **AppTrust benefit**: Enterprise tooling promoted together ensuring consistent automation across all environments (DEV → QA → STAGING → PROD)
+- **Real-world applicability**: Platform engineering teams, enterprise automation, and standardized DevOps practices
 
-Python commons library providing shared utilities for BookVerse services:
-- **Authentication**: JWT/OIDC authentication with `AuthUser` and validation
-- **Configuration**: Advanced YAML loading with deep merging and environment variables
-- **API Utilities**: Standardized HTTP exceptions, pagination, and response helpers
-- **Database**: SQLAlchemy session management and pagination utilities
+This repository is **tooling-focused** - it demonstrates how enterprise infrastructure and automation can be reliably versioned and promoted.
 
-### `bookverse-devops` (DevOps Package)
-
-CI/CD workflows, scripts, and tooling for BookVerse services:
-- **Reusable Workflows**: Standardized GitHub Actions workflows
-- **Scripts**: Semantic versioning, evidence generation, and deployment utilities
-- **Evidence Templates**: AppTrust evidence collection templates
-- **Shared Tooling**: Common CI/CD patterns and configurations
-
-## 🏗️ Repository Structure
+## 🏗️ Infrastructure Repository Architecture
 
 ```
-bookverse-infra/
-├── libraries/
-│   ├── bookverse-core/          # Python commons library
-│   └── bookverse-devops/        # CI/CD workflows & scripts
-├── .github/workflows/           # Multi-library CI/CD
-├── scripts/                     # Cross-library utilities
-└── docs/                        # Documentation
+┌─────────────────────────────────────────────────────────────┐
+│                BookVerse Infrastructure                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│            ┌─────────────────────────────────┐              │
+│            │    Infrastructure Repository    │              │
+│            │                                 │              │
+│            │  Enterprise Libraries &         │              │
+│            │  DevOps Tooling                 │              │
+│            │ ┌─────────────────────────────┐ │              │
+│            │ │   BookVerse Core Library    │ │              │
+│            │ │   (Shared Components)       │ │              │
+│            │ └─────────────────────────────┘ │              │
+│            │ ┌─────────────────────────────┐ │              │
+│            │ │   BookVerse DevOps Tools    │ │              │
+│            │ │   (Automation Scripts)      │ │              │
+│            │ └─────────────────────────────┘ │              │
+│            │ ┌─────────────────────────────┐ │              │
+│            │ │   Evidence & Templates      │ │              │
+│            │ │   (Policy Templates)        │ │              │
+│            │ └─────────────────────────────┘ │              │
+│            └─────────────────────────────────┘              │
+│                            │                                │
+│       ┌────────────────────┼────────────────────┐           │
+│       │                    │                    │           │
+│       ▼                    ▼                    ▼           │
+│ [All Services]       [All Workflows]      [All Teams]      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+AppTrust Promotion Pipeline:
+DEV → QA → STAGING → PROD
+ │     │       │        │
+ └─────┴───────┴────────┘
+   Shared Libraries & Tools
+   Used Across All Components
 ```
 
-## 🚀 Usage
+## 🔧 JFrog AppTrust Integration
 
-### Using bookverse-core in Services
+This repository creates multiple artifacts per application version:
 
-```python
-# Authentication
-from bookverse_core.auth import AuthUser, validate_jwt_token
+1. **Python Packages** - BookVerse Core library for all services
+2. **DevOps Scripts** - Automation utilities and helper tools
+3. **Templates** - Evidence templates and policy configurations
+4. **Documentation** - Enterprise architecture and integration guides
+5. **SBOMs** - Software Bill of Materials for shared dependencies
+6. **Test Reports** - Library and integration testing results
+7. **Build Evidence** - Comprehensive infrastructure build attestations
 
-# Configuration
-from bookverse_core.config import ConfigLoader, load_config_with_defaults
+Each artifact moves together through the promotion pipeline: DEV → QA → STAGING → PROD.
 
-# API Utilities
-from bookverse_core.api.exceptions import raise_validation_error, raise_not_found_error
+For the non-JFrog evidence plan and gates, see: `docs/EVIDENCE_PLAN.md`.
 
-# Database
-from bookverse_core.database import get_session, paginate_query
-```
+## 🔄 Workflows
 
-### Using bookverse-devops Workflows
-
-```yaml
-# .github/workflows/ci.yml
-name: CI
-on: [push, pull_request]
-
-jobs:
-  build:
-    uses: bookverse-infra/.github/workflows/shared-build.yml@main
-    with:
-      service_name: my-service
-    secrets: inherit
-```
-
-## 📦 Publishing
-
-Libraries are automatically built and published to JFrog Artifactory on:
-- **Releases**: Full semantic versioning
-- **Main branch**: Development versions
-- **Pull requests**: Test builds
-
-## 🔧 Development
-
-### Local Development
-```bash
-# Install bookverse-core locally
-pip install -e ./libraries/bookverse-core
-
-# Run tests
-pytest libraries/bookverse-core/tests
-pytest libraries/bookverse-devops/tests
-```
-
-### Contributing
-1. Make changes in the appropriate library directory
-2. Update version numbers following semantic versioning
-3. Add tests for new functionality
-4. Submit pull request
-
-## 📋 Migration Status
-
-- ✅ **bookverse-recommendations**: Migrated to bookverse-core package
-- ✅ **bookverse-inventory**: Migrated to bookverse-core package  
-- ✅ **bookverse-checkout**: Migrated to bookverse-core package
-- ✅ **bookverse-platform**: Migrated to bookverse-core package
-- ⏳ **All services**: Migrating to published packages from bookverse-infra (in progress)
-
-## 🏆 Benefits
-
-- **Code Reuse**: Shared utilities across all BookVerse services
-- **Consistency**: Standardized patterns and implementations
-- **Maintainability**: Central location for common functionality
-- **Quality**: Comprehensive testing and CI/CD for shared code
-- **Security**: Centralized authentication and security patterns
+- [`ci.yml`](.github/workflows/ci.yml) — CI: library tests, package builds, template validation, publish artifacts/build-info, AppTrust version and evidence
+- [`promote.yml`](.github/workflows/promote.yml) — Promote the infra app version through stages with evidence
+- [`promotion-rollback.yml`](.github/workflows/promotion-rollback.yml) — Roll back a promoted infra application version (demo utility)
