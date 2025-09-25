@@ -57,7 +57,7 @@ evidence_matrix:
     
     dev:
       - name: "smoke-tests"
-        predicate_type: "https://bookverse.com/evidence/smoke-tests/v1"
+        predicate_type: "https://testing.io/evidence/smoke-tests/v1"
         description: "Basic smoke tests in DEV environment"
         required: false
         attach_stage: "DEV"

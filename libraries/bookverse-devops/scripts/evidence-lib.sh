@@ -298,7 +298,7 @@ attach_application_smoke_evidence() {
   
   printf "# Smoke Tests\n\nDEV environment smoke tests for %s v%s.\n" "$APPLICATION_KEY" "$APP_VERSION" > smoke-tests.md
   printf "📋 Creating smoke test evidence...\n"
-  evd_create smoke-tests.json "https://bookverse.com/evidence/smoke-tests/v1" smoke-tests.md
+  evd_create smoke-tests.json "https://testing.io/evidence/smoke-tests/v1" smoke-tests.md
 }
 
 attach_application_dast_evidence() {
