@@ -49,7 +49,7 @@ evidence_matrix:
         gate_for_promotion_to: "DEV"
         
       - name: "jira-release"
-        predicate_type: "https://atlassian.com/evidence/jira/release/v1"
+        predicate_type: "https://atlassian.com/evidence/jira/v1"
         description: "Jira release notes and ticket tracking"
         required: true
         attach_stage: "UNASSIGNED"
@@ -94,7 +94,7 @@ evidence_matrix:
         gate_for_promotion_to: "PROD"
         
       - name: "change-approval"
-        predicate_type: "https://servicenow.com/evidence/change-req/v1"
+        predicate_type: "https://servicenow.com/evidence/release/v1"
         description: "Change management approval"
         required: true
         attach_stage: "STAGING"
@@ -102,7 +102,7 @@ evidence_matrix:
     
     prod:
       - name: "deployment-verification"
-        predicate_type: "https://argoproj.github.io/evidence/deployment/v1"
+        predicate_type: "https://argocd.io/evidence/deployment/v1"
         description: "Production deployment verification and health checks"
         required: false
         attach_stage: "PROD"

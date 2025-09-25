@@ -283,7 +283,7 @@ attach_application_jira_evidence() {
   
   printf "# Jira Release\n\nRelease tracking for %s v%s.\n" "$APPLICATION_KEY" "$APP_VERSION" > jira-release.md
   printf "📋 Creating JIRA release evidence...\n"
-  evd_create jira-release.json "https://atlassian.com/evidence/jira/release/v1" jira-release.md
+  evd_create jira-release.json "https://atlassian.com/evidence/jira/v1" jira-release.md
 }
 
 attach_application_smoke_evidence() {
@@ -373,7 +373,7 @@ attach_application_change_evidence() {
   
   printf "# Change Approval\n\nChange management approval for %s v%s promotion to PROD.\n" "$APPLICATION_KEY" "$APP_VERSION" > change-approval.md
   printf "📋 Creating change approval evidence...\n"
-  evd_create change-approval.json "https://servicenow.com/evidence/change-req/v1" change-approval.md
+  evd_create change-approval.json "https://servicenow.com/evidence/release/v1" change-approval.md
 }
 
 attach_application_deployment_evidence() {
@@ -388,7 +388,7 @@ attach_application_deployment_evidence() {
   
   printf "# Deployment Verification\n\nProduction deployment verification for %s v%s.\n" "$APPLICATION_KEY" "$APP_VERSION" > deployment-verification.md
   printf "📋 Creating deployment verification evidence...\n"
-  evd_create deployment-verification.json "https://argoproj.github.io/argo-cd/evidence/deployment/v1" deployment-verification.md
+  evd_create deployment-verification.json "https://argocd.io/evidence/deployment/v1" deployment-verification.md
 }
 
 attach_docker_package_evidence() {
