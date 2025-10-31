@@ -506,18 +506,16 @@ create_release_bundle_for_version() {
   echo "🔍 BUILD_NUMBER env: ${BUILD_NUMBER}"
   
   # Create release bundle spec file for v2
-  # Use pattern-based spec with build filter (limits to specific build artifacts)
+  # Use pattern-based spec WITHOUT build filter - just get latest artifacts matching pattern
   local rb_spec="/tmp/rb-spec-${app_key}-${app_version}.json"
   cat > "$rb_spec" << EOF
 {
   "files": [
     {
-      "pattern": "${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local/${SERVICE_NAME}/*",
-      "build": "${build_name}/${build_number}"
+      "pattern": "${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local/${SERVICE_NAME}/${WEB_VERSION:-*}/*"
     },
     {
-      "pattern": "${PROJECT_KEY}-${SERVICE_NAME}-internal-generic-nonprod-local/${SERVICE_NAME}/*",
-      "build": "${build_name}/${build_number}"
+      "pattern": "${PROJECT_KEY}-${SERVICE_NAME}-internal-generic-nonprod-local/${SERVICE_NAME}/assets/${WEB_ASSETS_VERSION:-*}/*"
     }
   ]
 }
