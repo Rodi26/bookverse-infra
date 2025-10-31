@@ -495,13 +495,15 @@ setup_promotion_environment() {
 create_release_bundle_for_version() {
   local app_key="${APPLICATION_KEY}"
   local app_version="${APP_VERSION}"
-  local build_name="${BUILD_NAME}"
-  local build_number="${BUILD_NUMBER}"
+  # Use JFROG_CLI_BUILD_NAME and JFROG_CLI_BUILD_NUMBER which JFrog CLI uses internally
+  local build_name="${JFROG_CLI_BUILD_NAME:-${BUILD_NAME}}"
+  local build_number="${JFROG_CLI_BUILD_NUMBER:-${BUILD_NUMBER}}"
   
   echo "📦 Creating release bundle v2: ${app_key}:${app_version}"
+  echo "🔍 Using build: ${build_name}/${build_number}"
   
   # Create release bundle spec file for v2
-  # Use pattern-based spec instead of build reference (more compatible)
+  # Use pattern-based spec with build filter (limits to specific build artifacts)
   local rb_spec="/tmp/rb-spec-${app_key}-${app_version}.json"
   cat > "$rb_spec" << EOF
 {
