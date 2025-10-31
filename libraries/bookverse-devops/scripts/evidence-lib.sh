@@ -521,9 +521,9 @@ EOF
   echo ""
   
   # Try to create the release bundle v2 with project support
+  # Note: Signing is optional - remove --signing-key if key-pair is not configured in JFrog
   if jf rbc \
       --spec="$rb_spec" \
-      --signing-key="${EVIDENCE_KEY_ALIAS:-bookverse_evidence_key}" \
       --project="${PROJECT_KEY}" \
       "${rb_name}" \
       "${rb_version}" 2>&1 | tee /tmp/rb-create.log; then
