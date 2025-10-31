@@ -488,4 +488,64 @@ setup_promotion_environment() {
   echo "✅ Promotion environment configured"
 }
 
+# =============================================================================
+# RELEASE BUNDLE CREATION
+# =============================================================================
+
+create_release_bundle_for_version() {
+  local app_key="${APPLICATION_KEY}"
+  local app_version="${APP_VERSION}"
+  local build_name="${BUILD_NAME}"
+  local build_number="${BUILD_NUMBER}"
+  
+  echo "📦 Creating release bundle: ${app_key}:${app_version}"
+  
+  # Create release bundle spec file
+  local rb_spec="/tmp/rb-spec-${app_key}-${app_version}.json"
+  cat > "$rb_spec" << EOF
+{
+  "files": [
+    {
+      "build": "${build_name}/${build_number}"
+    }
+  ]
+}
+EOF
+  
+  # Create release bundle using JFrog CLI
+  local rb_name="${app_key}"
+  local rb_version="${app_version}"
+  
+  echo "📋 Release Bundle Spec:"
+  cat "$rb_spec"
+  echo ""
+  
+  # Try to create the release bundle
+  if jf ds rbc --spec="$rb_spec" \
+      --sign \
+      --project="${PROJECT_KEY}" \
+      "${rb_name}" \
+      "${rb_version}" 2>&1 | tee /tmp/rb-create.log; then
+    echo "✅ Release bundle created: ${rb_name}:${rb_version}"
+    rm -f "$rb_spec"
+    return 0
+  else
+    local exit_code=$?
+    echo "⚠️ Failed to create release bundle (exit code: $exit_code)"
+    echo "📋 Output:"
+    cat /tmp/rb-create.log || true
+    rm -f "$rb_spec"
+    
+    # Check if it's because the bundle already exists
+    if grep -q "already exists\|conflict" /tmp/rb-create.log 2>/dev/null; then
+      echo "ℹ️ Release bundle already exists, continuing..."
+      return 0
+    fi
+    
+    # Don't fail the workflow - release bundles are optional
+    echo "⚠️ Continuing without release bundle (optional feature)"
+    return 0
+  fi
+}
+
 echo "✅ BookVerse Evidence Library loaded"
