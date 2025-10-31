@@ -520,10 +520,9 @@ EOF
   cat "$rb_spec"
   echo ""
   
-  # Try to create the release bundle
+  # Try to create the release bundle (v1 API doesn't support --project flag)
   if jf ds rbc --spec="$rb_spec" \
       --sign \
-      --project="${PROJECT_KEY}" \
       "${rb_name}" \
       "${rb_version}" 2>&1 | tee /tmp/rb-create.log; then
     echo "✅ Release bundle created: ${rb_name}:${rb_version}"
