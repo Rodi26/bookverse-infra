@@ -498,9 +498,9 @@ create_release_bundle_for_version() {
   local build_name="${BUILD_NAME}"
   local build_number="${BUILD_NUMBER}"
   
-  echo "📦 Creating release bundle: ${app_key}:${app_version}"
+  echo "📦 Creating release bundle v2: ${app_key}:${app_version}"
   
-  # Create release bundle spec file
+  # Create release bundle spec file for v2
   local rb_spec="/tmp/rb-spec-${app_key}-${app_version}.json"
   cat > "$rb_spec" << EOF
 {
@@ -512,37 +512,39 @@ create_release_bundle_for_version() {
 }
 EOF
   
-  # Create release bundle using JFrog CLI
+  # Create release bundle v2 using JFrog CLI
   local rb_name="${app_key}"
   local rb_version="${app_version}"
   
-  echo "📋 Release Bundle Spec:"
+  echo "📋 Release Bundle v2 Spec:"
   cat "$rb_spec"
   echo ""
   
-  # Try to create the release bundle (v1 API doesn't support --project flag)
-  if jf ds rbc --spec="$rb_spec" \
-      --sign \
+  # Try to create the release bundle v2 with project support
+  if jf ds rbcv2 \
+      --spec="$rb_spec" \
+      --signing-key="${EVIDENCE_KEY_ALIAS:-bookverse_evidence_key}" \
+      --project="${PROJECT_KEY}" \
       "${rb_name}" \
       "${rb_version}" 2>&1 | tee /tmp/rb-create.log; then
-    echo "✅ Release bundle created: ${rb_name}:${rb_version}"
+    echo "✅ Release bundle v2 created: ${rb_name}:${rb_version}"
     rm -f "$rb_spec"
     return 0
   else
     local exit_code=$?
-    echo "⚠️ Failed to create release bundle (exit code: $exit_code)"
+    echo "⚠️ Failed to create release bundle v2 (exit code: $exit_code)"
     echo "📋 Output:"
     cat /tmp/rb-create.log || true
     rm -f "$rb_spec"
     
     # Check if it's because the bundle already exists
     if grep -q "already exists\|conflict" /tmp/rb-create.log 2>/dev/null; then
-      echo "ℹ️ Release bundle already exists, continuing..."
+      echo "ℹ️ Release bundle v2 already exists, continuing..."
       return 0
     fi
     
     # Don't fail the workflow - release bundles are optional
-    echo "⚠️ Continuing without release bundle (optional feature)"
+    echo "⚠️ Continuing without release bundle v2 (optional feature)"
     return 0
   fi
 }
