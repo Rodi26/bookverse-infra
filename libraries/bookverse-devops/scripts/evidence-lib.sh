@@ -501,11 +501,17 @@ create_release_bundle_for_version() {
   echo "📦 Creating release bundle v2: ${app_key}:${app_version}"
   
   # Create release bundle spec file for v2
+  # Use pattern-based spec instead of build reference (more compatible)
   local rb_spec="/tmp/rb-spec-${app_key}-${app_version}.json"
   cat > "$rb_spec" << EOF
 {
   "files": [
     {
+      "pattern": "${PROJECT_KEY}-${SERVICE_NAME}-internal-docker-nonprod-local/${SERVICE_NAME}/*",
+      "build": "${build_name}/${build_number}"
+    },
+    {
+      "pattern": "${PROJECT_KEY}-${SERVICE_NAME}-internal-generic-nonprod-local/${SERVICE_NAME}/*",
       "build": "${build_name}/${build_number}"
     }
   ]
